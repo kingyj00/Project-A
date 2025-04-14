@@ -1,0 +1,64 @@
+# ========================
+#  기본 빌드/환경 무시
+# ========================
+.gradle
+build/
+target/
+out/
+bin/
+!.gitkeep
+
+# ========================
+#  Spring 관련
+# ========================
+application.yml
+application-*.yml
+application.properties
+application-*.properties
+
+# ========================
+#  로그/시크릿 정보
+# ========================
+*.log
+logs/
+jwt-secret.txt
+secret.key
+.env
+
+# ========================
+#  IDE 관련
+# ========================
+
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+
+### VS Code ###
+.vscode/
+
+### STS ###
+.apt_generated/
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# ========================
+# ✅ 테스트 결과물
+# ========================
+/test-output/
+!**/src/main/**/out/
+/build/
+!**/src/main/**/build/
+/target/
