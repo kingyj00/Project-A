@@ -37,6 +37,21 @@ public class UserService {
         mailService.sendVerificationEmail(user);
     }
 
+    public User login(String username, String password) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("존재하지 않는 사용자입니다."));
+
+        if (!user.isEnabled()) {
+            throw new RuntimeException("이메일 인증이 완료되지 않았습니다.");
+        }
+
+        if (!passwordEncoder.matches(password, user.getPassword())) {
+            throw new RuntimeException("비밀번호가 일치하지 않습니다.");
+        }
+
+        return user; // 로그인 성공
+    }
+
     @Transactional
     public void verifyEmail(String token) {
         User user = userRepository.findByEmailVerificationToken(token)
