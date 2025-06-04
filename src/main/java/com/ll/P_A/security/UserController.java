@@ -1,5 +1,6 @@
 package com.ll.P_A.security;
 
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,5 +22,12 @@ public class UserController {
     public ResponseEntity<String> verifyEmail(@RequestParam String token) {
         userService.verifyEmail(token);
         return ResponseEntity.ok("이메일 인증 완료!");
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<String> login(@RequestBody LoginRequest request, HttpSession session) {
+        User user = userService.login(request.getUsername(), request.getPassword());
+        session.setAttribute("user", user.getId()); // 세션에 사용자 ID 저장
+        return ResponseEntity.ok("로그인 성공");
     }
 }
