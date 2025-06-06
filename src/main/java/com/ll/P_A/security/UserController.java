@@ -30,4 +30,10 @@ public class UserController {
         session.setAttribute("user", user.getId()); // 세션에 사용자 ID 저장
         return ResponseEntity.ok("로그인 성공");
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(HttpSession session) {
+        session.invalidate(); // 현재 세션 무효화
+        return ResponseEntity.ok("로그아웃 성공");
+    }
 }
