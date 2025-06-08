@@ -29,6 +29,9 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
+    @Column(nullable = false)
+    private boolean isAdmin = false;
+
     private boolean enabled = false; // 계정 활성화 여부 (메일 인증 여부)
 
     private String emailVerificationToken; // 인증 토큰
