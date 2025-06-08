@@ -59,4 +59,8 @@ public class UserService {
 
         user.verifyEmail();
     }
+
+    public void deleteById(Long id) {
+        userRepository.deleteById(id);
+    }
 }
