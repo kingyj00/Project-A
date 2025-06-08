@@ -2,6 +2,7 @@ package com.ll.P_A.security;
 
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,5 +36,21 @@ public class UserController {
     public ResponseEntity<String> logout(HttpSession session) {
         session.invalidate(); // 현재 세션 무효화
         return ResponseEntity.ok("로그아웃 성공");
+    }
+
+    @DeleteMapping("/admin/users/{id}")
+    public ResponseEntity<String> deleteUser(@PathVariable Long id, HttpSession session) {
+        Long requesterId = (Long) session.getAttribute("userId");
+        if (requesterId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인이 필요합니다.");
+        }
+
+        User admin = userService.findById(requesterId);
+        if (!admin.isAdmin()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("관리자만 접근할 수 있습니다.");
+        }
+
+        userService.deleteById(id);
+        return ResponseEntity.ok("사용자 삭제 완료");
     }
 }
