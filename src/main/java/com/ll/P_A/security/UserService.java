@@ -77,4 +77,9 @@ public class UserService {
                 .map(UserSummary::new)
                 .toList();
     }
+
+    public UserProfileResponse getMyProfile(Long userId) {
+        User user = findById(userId);
+        return new UserProfileResponse(user);
+    }
 }

@@ -71,4 +71,15 @@ public class UserController {
         List<UserSummary> users = userService.findAllUsers();
         return ResponseEntity.ok(users);
     }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> getMyInfo(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인이 필요합니다.");
+        }
+
+        UserProfileResponse profile = userService.getMyProfile(userId);
+        return ResponseEntity.ok(profile);
+    }
 }
