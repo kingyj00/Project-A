@@ -6,6 +6,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -52,5 +54,21 @@ public class UserController {
 
         userService.deleteById(id);
         return ResponseEntity.ok("사용자 삭제 완료");
+    }
+
+    @GetMapping("/admin/users")
+    public ResponseEntity<?> listUsers(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인이 필요합니다.");
+        }
+
+        User admin = userService.findById(userId);
+        if (!admin.isAdmin()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("관리자만 접근할 수 있습니다.");
+        }
+
+        List<UserSummary> users = userService.findAllUsers();
+        return ResponseEntity.ok(users);
     }
 }
