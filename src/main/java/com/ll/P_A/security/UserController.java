@@ -82,4 +82,15 @@ public class UserController {
         UserProfileResponse profile = userService.getMyProfile(userId);
         return ResponseEntity.ok(profile);
     }
+
+    @PutMapping("/me")
+    public ResponseEntity<String> updateMyInfo(@RequestBody UserUpdateRequest request, HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인이 필요합니다.");
+        }
+
+        userService.updateUser(userId, request); // 본인만 수정 가능
+        return ResponseEntity.ok("회원정보 수정 완료");
+    }
 }

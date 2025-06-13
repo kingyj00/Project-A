@@ -82,4 +82,18 @@ public class UserService {
         User user = findById(userId);
         return new UserProfileResponse(user);
     }
+
+    @Transactional
+    public void updateUser(Long id, UserUpdateRequest request) {
+        User user = findById(id); // 세션 ID로 본인 찾기
+
+        user.setNickname(request.getNickname());
+
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
+        }
+
+        userRepository.save(user); // DB 반영
+    }
 }
+
