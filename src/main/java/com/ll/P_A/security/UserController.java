@@ -93,4 +93,16 @@ public class UserController {
         userService.updateUser(userId, request); // 본인만 수정 가능
         return ResponseEntity.ok("회원정보 수정 완료");
     }
+
+    @DeleteMapping("/me")
+    public ResponseEntity<String> deleteMyAccount(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인이 필요합니다.");
+        }
+
+        userService.deleteById(userId);
+        session.invalidate(); // 탈퇴 후 세션 종료
+        return ResponseEntity.ok("회원 탈퇴가 완료되었습니다.");
+    }
 }
