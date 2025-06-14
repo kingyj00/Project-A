@@ -9,5 +9,6 @@ import lombok.*;
 @Builder
 public class UserUpdateRequest {
     private String nickname;
-    private String password; // 닉네임과 비번만 변경 가능
+    private String currentPassword;  // 추가: 기존 비밀번호
+    private String newPassword;      // 변경할 비밀번호
 }
