@@ -90,7 +90,7 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인이 필요합니다.");
         }
 
-        userService.updateUser(userId, request); // 본인만 수정 가능
+        userService.updateUser(userId, request);
         return ResponseEntity.ok("회원정보 수정 완료");
     }
 

@@ -84,16 +84,23 @@ public class UserService {
     }
 
     @Transactional
-    public void updateUser(Long id, UserUpdateRequest request) {
-        User user = findById(id); // 세션 ID로 본인 찾기
+    public void updateUser(Long userId, UserUpdateRequest request) {
+        User user = findById(userId);  // 본인 확인
 
-        user.setNickname(request.getNickname());
-
-        if (request.getPassword() != null && !request.getPassword().isBlank()) {
-            user.setPassword(passwordEncoder.encode(request.getPassword()));
+        // (1) 현재 비밀번호 검증
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
         }
 
-        userRepository.save(user); // DB 반영
+        // (2) 닉네임 수정
+        user.setNickname(request.getNickname());
+
+        // (3) 새 비밀번호 입력이 있으면 변경
+        if (request.getNewPassword() != null && !request.getNewPassword().isBlank()) {
+            user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        }
+
+        userRepository.save(user);
     }
 }
 
