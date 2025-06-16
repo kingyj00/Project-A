@@ -4,19 +4,13 @@ import lombok.Getter;
 
 @Getter
 public class UserProfileResponse {
-    private Long id;
-    private String username;
-    private String nickname;
-    private String email;
-    private boolean enabled;
-    private boolean isAdmin;
+    private final String username;
+    private final String email;
+    private final boolean emailVerified;
 
-    public UserProfileResponse(User user) {
-        this.id = user.getId();
-        this.username = user.getUsername();
-        this.nickname = user.getNickname();
-        this.email = user.getEmail();
-        this.enabled = user.isEnabled();
-        this.isAdmin = user.isAdmin();
+    public UserProfileResponse(String username, String email, boolean emailVerified) {
+        this.username = username;
+        this.email = email;
+        this.emailVerified = emailVerified;
     }
 }
