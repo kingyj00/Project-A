@@ -2,6 +2,7 @@ package com.ll.P_A.security;
 
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -32,24 +33,38 @@ public class User {
     @Column(nullable = false)
     private boolean isAdmin = false;
 
-    private boolean enabled = false; // 계정 활성화 여부 (메일 인증 여부)
+    // 이메일 인증 상태
+    @Builder.Default
+    private boolean enabled = false;
 
     private String emailVerificationToken; // 인증 토큰
 
     private LocalDateTime tokenGeneratedAt; // 토큰 생성 시간
 
+    // 이메일 인증 토큰 생성
     public void generateVerificationToken() {
         this.emailVerificationToken = UUID.randomUUID().toString();
         this.tokenGeneratedAt = LocalDateTime.now();
     }
 
+    // 토큰 유효성 검증
     public boolean isValidToken(String token) {
         return this.emailVerificationToken != null && this.emailVerificationToken.equals(token);
     }
 
+    // 이메일 인증 처리
     public void verifyEmail() {
         this.enabled = true;
         this.emailVerificationToken = null;
         this.tokenGeneratedAt = null;
+    }
+
+    // 명시적 메서드 추가: isEmailVerified / setEmailVerified
+    public boolean isEmailVerified() {
+        return this.enabled;
+    }
+
+    public void setEmailVerified(boolean emailVerified) {
+        this.enabled = emailVerified;
     }
 }
