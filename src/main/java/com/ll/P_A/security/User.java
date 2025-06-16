@@ -67,4 +67,8 @@ public class User {
     public void setEmailVerified(boolean emailVerified) {
         this.enabled = emailVerified;
     }
+
+    public boolean isTokenExpired() {
+        return tokenGeneratedAt != null && tokenGeneratedAt.isBefore(LocalDateTime.now().minusMinutes(30));
+    }// 30분안에 인증 안하면 만료
 }
