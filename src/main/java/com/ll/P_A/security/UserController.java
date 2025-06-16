@@ -29,14 +29,14 @@ public class UserController {
 
     @PostMapping("/login")
     public ResponseEntity<String> login(@RequestBody LoginRequest request, HttpSession session) {
-        User user = userService.login(request.getUsername(), request.getPassword());
-        session.setAttribute("user", user.getId()); // 세션에 사용자 ID 저장
+        User user = userService.login(request);
+        session.setAttribute("userId", user.getId());
         return ResponseEntity.ok("로그인 성공");
     }
 
     @PostMapping("/logout")
     public ResponseEntity<String> logout(HttpSession session) {
-        session.invalidate(); // 현재 세션 무효화
+        session.invalidate();
         return ResponseEntity.ok("로그아웃 성공");
     }
 
@@ -90,7 +90,7 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인이 필요합니다.");
         }
 
-        userService.updateUser(userId, request);
+        userService.updateUser(request, userId);  // 인자 순서 수정
         return ResponseEntity.ok("회원정보 수정 완료");
     }
 
@@ -102,7 +102,7 @@ public class UserController {
         }
 
         userService.deleteById(userId);
-        session.invalidate(); // 탈퇴 후 세션 종료
+        session.invalidate();
         return ResponseEntity.ok("회원 탈퇴가 완료되었습니다.");
     }
 }
