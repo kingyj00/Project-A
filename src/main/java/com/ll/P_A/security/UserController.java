@@ -2,8 +2,6 @@ package com.ll.P_A.security;
 
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,93 +14,91 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping("/signup")
-    public ResponseEntity<String> signup(@RequestBody UserSignupRequest request) {
+    public String signup(@RequestBody UserSignupRequest request) {
         userService.signup(request);
-        return ResponseEntity.ok("가입 완료! 이메일을 확인해주세요.");
+        return "가입 완료! 이메일을 확인해주세요.";
     }
 
     @GetMapping("/verify-email")
-    public ResponseEntity<String> verifyEmail(@RequestParam String token) {
+    public String verifyEmail(@RequestParam String token) {
         userService.verifyEmail(token);
-        return ResponseEntity.ok("이메일 인증 완료!");
+        return "이메일 인증 완료!";
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody LoginRequest request, HttpSession session) {
+    public String login(@RequestBody LoginRequest request, HttpSession session) {
         User user = userService.login(request);
         session.setAttribute("userId", user.getId());
-        return ResponseEntity.ok("로그인 성공");
+        return "로그인 성공";
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<String> logout(HttpSession session) {
+    public String logout(HttpSession session) {
         session.invalidate();
-        return ResponseEntity.ok("로그아웃 성공");
+        return "로그아웃 성공";
     }
 
     @DeleteMapping("/admin/users/{id}")
-    public ResponseEntity<String> deleteUser(@PathVariable Long id, HttpSession session) {
+    public String deleteUser(@PathVariable Long id, HttpSession session) {
         Long requesterId = (Long) session.getAttribute("userId");
         if (requesterId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인이 필요합니다.");
+            throw new IllegalArgumentException("로그인이 필요합니다.");
         }
 
         User admin = userService.findById(requesterId);
         if (!admin.isAdmin()) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("관리자만 접근할 수 있습니다.");
+            throw new IllegalArgumentException("관리자만 접근할 수 있습니다.");
         }
 
         userService.deleteById(id);
-        return ResponseEntity.ok("사용자 삭제 완료");
+        return "사용자 삭제 완료";
     }
 
     @GetMapping("/admin/users")
-    public ResponseEntity<?> listUsers(HttpSession session) {
+    public List<UserSummary> listUsers(HttpSession session) {
         Long userId = (Long) session.getAttribute("userId");
         if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인이 필요합니다.");
+            throw new IllegalArgumentException("로그인이 필요합니다.");
         }
 
         User admin = userService.findById(userId);
         if (!admin.isAdmin()) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("관리자만 접근할 수 있습니다.");
+            throw new IllegalArgumentException("관리자만 접근할 수 있습니다.");
         }
 
-        List<UserSummary> users = userService.findAllUsers();
-        return ResponseEntity.ok(users);
+        return userService.findAllUsers();
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> getMyInfo(HttpSession session) {
+    public UserProfileResponse getMyInfo(HttpSession session) {
         Long userId = (Long) session.getAttribute("userId");
         if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인이 필요합니다.");
+            throw new IllegalArgumentException("로그인이 필요합니다.");
         }
 
-        UserProfileResponse profile = userService.getMyProfile(userId);
-        return ResponseEntity.ok(profile);
+        return userService.getMyProfile(userId);
     }
 
     @PutMapping("/me")
-    public ResponseEntity<String> updateMyInfo(@RequestBody UserUpdateRequest request, HttpSession session) {
+    public String updateMyInfo(@RequestBody UserUpdateRequest request, HttpSession session) {
         Long userId = (Long) session.getAttribute("userId");
         if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인이 필요합니다.");
+            throw new IllegalArgumentException("로그인이 필요합니다.");
         }
 
-        userService.updateUser(request, userId);  // 인자 순서 수정
-        return ResponseEntity.ok("회원정보 수정 완료");
+        userService.updateUser(request, userId);
+        return "회원정보 수정 완료";
     }
 
     @DeleteMapping("/me")
-    public ResponseEntity<String> deleteMyAccount(HttpSession session) {
+    public String deleteMyAccount(HttpSession session) {
         Long userId = (Long) session.getAttribute("userId");
         if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인이 필요합니다.");
+            throw new IllegalArgumentException("로그인이 필요합니다.");
         }
 
         userService.deleteById(userId);
         session.invalidate();
-        return ResponseEntity.ok("회원 탈퇴가 완료되었습니다.");
+        return "회원 탈퇴가 완료되었습니다.";
     }
 }

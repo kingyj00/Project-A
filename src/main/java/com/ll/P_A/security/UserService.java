@@ -18,7 +18,7 @@ public class UserService {
     @Transactional
     public void signup(UserSignupRequest request) {
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
-            throw new IllegalArgumentException("이미 존재하는 아이디입니다.");
+            throw new IllegalArgumentException("이미 사용 중인 아이디입니다.");
         }
 
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
@@ -40,14 +40,14 @@ public class UserService {
 
     public User login(LoginRequest request) {
         User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 아이디입니다."));
+                .orElseThrow(() -> new IllegalArgumentException("아이디 또는 비밀번호가 올바르지 않습니다."));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
+            throw new IllegalArgumentException("아이디 또는 비밀번호가 올바르지 않습니다.");
         }
 
         if (!user.isEmailVerified()) {
-            throw new IllegalStateException("이메일 인증이 완료되지 않았습니다.");
+            throw new IllegalStateException("이메일 인증을 완료해주세요.");
         }
 
         return user;
@@ -55,22 +55,19 @@ public class UserService {
 
     @Transactional
     public void verifyEmail(String token) {
-        User user = userRepository.findAll().stream()
-                .filter(u -> u.getEmailVerificationToken() != null && u.isValidToken(token))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 토큰입니다."));
+        User user = userRepository.findByEmailVerificationToken(token)
+                .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 인증 토큰입니다."));
 
         if (user.isTokenExpired()) {
-            throw new IllegalStateException("인증 토큰이 만료되었습니다. 다시 요청해주세요.");
+            throw new IllegalStateException("인증 토큰이 만료되었습니다. 다시 인증을 요청해주세요.");
         }
 
         user.verifyEmail();
-        userRepository.save(user);
     }
 
     public User findById(Long id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("해당 ID의 사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자를 찾을 수 없습니다."));
     }
 
     public UserProfileResponse getMyProfile(Long id) {
@@ -94,7 +91,7 @@ public class UserService {
             user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         }
 
-        // 이메일 변경 + 인증 처리
+        // 이메일 변경 시 인증 다시 받도록
         if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
             user.setEmail(request.getEmail());
             user.setEnabled(false);
@@ -106,14 +103,12 @@ public class UserService {
         if (request.getNickname() != null && !request.getNickname().equals(user.getNickname())) {
             user.setNickname(request.getNickname());
         }
-
-        userRepository.save(user);
     }
 
     @Transactional
     public void deleteById(Long id) {
         if (!userRepository.existsById(id)) {
-            throw new IllegalArgumentException("해당 ID의 사용자가 존재하지 않습니다.");
+            throw new IllegalArgumentException("해당 사용자가 존재하지 않습니다.");
         }
 
         userRepository.deleteById(id);
