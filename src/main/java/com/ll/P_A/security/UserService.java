@@ -60,6 +60,10 @@ public class UserService {
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 토큰입니다."));
 
+        if (user.isTokenExpired()) {
+            throw new IllegalStateException("인증 토큰이 만료되었습니다. 다시 요청해주세요.");
+        }
+
         user.verifyEmail();
         userRepository.save(user);
     }
@@ -82,10 +86,15 @@ public class UserService {
     public void updateUser(UserUpdateRequest request, Long id) {
         User user = findById(id);
 
-        if (request.getPassword() != null && !request.getPassword().isEmpty()) {
-            user.setPassword(passwordEncoder.encode(request.getPassword()));
+        // 비밀번호 변경 시 현재 비밀번호 확인
+        if (request.getNewPassword() != null && !request.getNewPassword().isBlank()) {
+            if (request.getCurrentPassword() == null || !passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+                throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
+            }
+            user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         }
 
+        // 이메일 변경 + 인증 처리
         if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
             user.setEmail(request.getEmail());
             user.setEnabled(false);
@@ -93,6 +102,7 @@ public class UserService {
             mailService.sendVerificationEmail(user);
         }
 
+        // 닉네임 변경
         if (request.getNickname() != null && !request.getNickname().equals(user.getNickname())) {
             user.setNickname(request.getNickname());
         }
