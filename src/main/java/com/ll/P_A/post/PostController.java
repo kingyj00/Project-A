@@ -62,4 +62,24 @@ public class PostController {
         Long id = postService.create(dto);
         return ResponseEntity.created(URI.create("/api/posts/" + id)).build();
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Void> updatePost(@PathVariable Long id, @RequestBody PostRequestDto dto, HttpSession session) {
+        if (session.getAttribute("userId") == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        postService.update(id, dto);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deletePost(@PathVariable Long id, HttpSession session) {
+        if (session.getAttribute("userId") == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        postService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
 }
