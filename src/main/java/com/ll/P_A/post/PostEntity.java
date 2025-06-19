@@ -1,5 +1,6 @@
 package com.ll.P_A.post;
 
+import com.ll.P_A.user.User;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -21,14 +22,14 @@ public class PostEntity {
     @Lob
     private String content;
 
-    private String author;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User author;  // String → User 객체로 변경
 
     private int viewCount;
-
     private int likeCount;
 
     private LocalDateTime createdAt;
-
     private LocalDateTime updatedAt;
 
     @PrePersist
