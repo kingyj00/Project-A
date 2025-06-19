@@ -1,6 +1,6 @@
 package com.ll.P_A.post;
 
-import com.ll.P_A.user.User;
+import com.ll.P_A.security.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

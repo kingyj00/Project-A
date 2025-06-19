@@ -1,7 +1,7 @@
 package com.ll.P_A.post;
 
-import com.ll.P_A.user.User;
-import com.ll.P_A.user.UserService;
+import com.ll.P_A.security.User;
+import com.ll.P_A.security.UserService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

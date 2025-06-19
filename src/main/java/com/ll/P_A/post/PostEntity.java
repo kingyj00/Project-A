@@ -1,6 +1,6 @@
 package com.ll.P_A.post;
 
-import com.ll.P_A.user.User;
+import com.ll.P_A.security.User;
 import jakarta.persistence.*;
 import lombok.*;
 
