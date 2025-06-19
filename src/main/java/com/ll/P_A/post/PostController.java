@@ -1,5 +1,7 @@
 package com.ll.P_A.post;
 
+import com.ll.P_A.user.User;
+import com.ll.P_A.user.UserService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -16,8 +18,8 @@ import java.util.List;
 public class PostController {
 
     private final PostService postService;
+    private final UserService userService;
 
-    //로그인 확인 공통 메서드
     private Long getLoginUserId(HttpSession session) {
         Long userId = (Long) session.getAttribute("userId");
         if (userId == null) {
@@ -26,41 +28,49 @@ public class PostController {
         return userId;
     }
 
-    //전체 게시글 조회 (비회원 가능)
     @GetMapping
     public ResponseEntity<List<PostResponseDto>> getAllPosts() {
         List<PostResponseDto> posts = postService.getAll();
         return ResponseEntity.ok(posts);
     }
 
-    //단일 게시글 조회 (조회수 증가 포함)
     @GetMapping("/{id}")
     public ResponseEntity<PostResponseDto> getPost(@PathVariable Long id) {
         PostResponseDto post = postService.getById(id);
         return ResponseEntity.ok(post);
     }
 
-    // 게시글 작성 (회원만 가능)
     @PostMapping
     public ResponseEntity<Void> createPost(@RequestBody PostRequestDto dto, HttpSession session) {
         Long userId = getLoginUserId(session);
-        dto = new PostRequestDto(dto.title(), dto.content(), "user-" + userId); // author 임시 처리
-        Long id = postService.create(dto);
+        User user = userService.findById(userId);
+
+        Long id = postService.create(dto, user);
         return ResponseEntity.created(URI.create("/api/posts/" + id)).build();
     }
 
-    // 게시글 수정 (회원만 가능)
     @PutMapping("/{id}")
     public ResponseEntity<Void> updatePost(@PathVariable Long id, @RequestBody PostRequestDto dto, HttpSession session) {
-        getLoginUserId(session); // 로그인 여부만 확인
+        Long userId = getLoginUserId(session);
+        PostEntity post = postService.getEntityById(id);
+
+        if (!post.getAuthor().getId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "작성자만 수정할 수 있습니다.");
+        }
+
         postService.update(id, dto);
         return ResponseEntity.ok().build();
     }
 
-    //게시글 삭제 (회원만 가능)
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePost(@PathVariable Long id, HttpSession session) {
-        getLoginUserId(session);
+        Long userId = getLoginUserId(session);
+        PostEntity post = postService.getEntityById(id);
+
+        if (!post.getAuthor().getId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "작성자만 삭제할 수 있습니다.");
+        }
+
         postService.delete(id);
         return ResponseEntity.noContent().build();
     }
