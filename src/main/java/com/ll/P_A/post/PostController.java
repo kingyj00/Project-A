@@ -1,6 +1,8 @@
 package com.ll.P_A.post;
 
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -47,5 +49,17 @@ public class PostController {
     public ResponseEntity<Void> deletePost(@PathVariable Long id) {
         postService.delete(id);
         return ResponseEntity.noContent().build();  // HTTP 204
+    }
+
+    @PostMapping
+    public ResponseEntity<Void> createPost(@RequestBody PostRequestDto dto, HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build(); // 401 Unauthorized
+        }
+
+        dto = new PostRequestDto(dto.title(), dto.content(), "user-" + userId); // 예시용 author 세팅
+        Long id = postService.create(dto);
+        return ResponseEntity.created(URI.create("/api/posts/" + id)).build();
     }
 }
