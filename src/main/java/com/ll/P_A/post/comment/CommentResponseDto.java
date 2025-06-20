@@ -1,4 +1,4 @@
-package com.ll.P_A.post;
+package com.ll.P_A.post.comment;
 
 import java.time.LocalDateTime;
 
@@ -9,6 +9,11 @@ public record CommentResponseDto(
         LocalDateTime createdAt
 ) {
     public CommentResponseDto(Comment comment) {
-        this(comment.getId(), comment.getContent(), comment.getAuthor().getUsername(), comment.getCreatedAt());
+        this(
+                comment.getId(),
+                comment.getContent(),
+                comment.getAuthor().getUsername(),
+                comment.getCreatedAt()
+        );
     }
 }
