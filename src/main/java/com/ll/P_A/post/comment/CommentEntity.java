@@ -1,5 +1,6 @@
-package com.ll.P_A.post;
+package com.ll.P_A.post.comment;
 
+import com.ll.P_A.post.PostEntity;
 import com.ll.P_A.security.User;
 import jakarta.persistence.*;
 import lombok.*;
