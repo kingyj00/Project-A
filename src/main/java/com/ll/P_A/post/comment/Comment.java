@@ -4,6 +4,7 @@ import com.ll.P_A.post.PostEntity;
 import com.ll.P_A.security.User;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -30,8 +31,20 @@ public class Comment {
 
     private LocalDateTime createdAt;
 
+    private LocalDateTime updatedAt;
+
     @PrePersist
     public void onCreate() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    public void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void setContent(String content) {
+        this.content = content;
+        this.updatedAt = LocalDateTime.now(); // 수동 보정도 병행
     }
 }
