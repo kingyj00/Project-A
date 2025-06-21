@@ -6,14 +6,16 @@ public record CommentResponseDto(
         Long id,
         String content,
         String authorName,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
 ) {
     public CommentResponseDto(Comment comment) {
         this(
                 comment.getId(),
                 comment.getContent(),
                 comment.getAuthor().getUsername(),
-                comment.getCreatedAt()
+                comment.getCreatedAt(),
+                comment.getUpdatedAt()
         );
     }
 }
