@@ -11,6 +11,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/posts")
@@ -93,5 +94,22 @@ public class PostController {
 
         postService.unlike(id, user);
         return ResponseEntity.ok().build();
+    }
+
+    // 좋아요 누른 여부 확인
+    @GetMapping("/{id}/liked")
+    public ResponseEntity<?> isLiked(@PathVariable Long id, HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("{\"liked\": false}");
+        }
+
+        User user = userService.findById(userId);
+        boolean liked = postService.isLikedByUser(id, user);
+
+        return ResponseEntity.ok().body(
+                Map.of("liked", liked)
+        );
     }
 }
