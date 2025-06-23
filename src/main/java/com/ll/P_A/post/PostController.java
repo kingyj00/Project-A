@@ -74,4 +74,24 @@ public class PostController {
         postService.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    // 좋아요 추가
+    @PostMapping("/{id}/like")
+    public ResponseEntity<Void> likePost(@PathVariable Long id, HttpSession session) {
+        Long userId = getLoginUserId(session);
+        User user = userService.findById(userId);
+
+        postService.like(id, user);
+        return ResponseEntity.ok().build();
+    }
+
+    // 좋아요 취소
+    @PostMapping("/{id}/unlike")
+    public ResponseEntity<Void> unlikePost(@PathVariable Long id, HttpSession session) {
+        Long userId = getLoginUserId(session);
+        User user = userService.findById(userId);
+
+        postService.unlike(id, user);
+        return ResponseEntity.ok().build();
+    }
 }
