@@ -74,4 +74,11 @@ public class PostService {
         PostEntity post = getEntityById(postId);
         post.unlike(user);  // PostEntity 내부에서 존재 여부 확인 후 처리
     }
+
+    // 좋아유 누른 여부 확인
+    @Transactional(readOnly = true)
+    public boolean isLikedByUser(Long postId, User user) {
+        PostEntity post = getEntityById(postId);
+        return post.isLikedBy(user);  // PostEntity의 likedUsers에 포함 여부 확인
+    }
 }
