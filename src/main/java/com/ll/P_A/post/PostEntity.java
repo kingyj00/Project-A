@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Getter
@@ -32,6 +34,15 @@ public class PostEntity {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    //좋아요 누른 유저 목록
+    @ManyToMany
+    @JoinTable(
+            name = "post_likes",
+            joinColumns = @JoinColumn(name = "post_id"),
+            inverseJoinColumns = @JoinColumn(name = "user_id")
+    )
+    private Set<User> likedUsers = new HashSet<>();
+
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
@@ -49,16 +60,28 @@ public class PostEntity {
         this.viewCount++;
     }
 
-    public void increaseLikeCount() {
-        this.likeCount++;
-    }
-
-    public void decreaseLikeCount() {
-        if (this.likeCount > 0) this.likeCount--;
-    }
-
     public void update(String title, String content) {
         this.title = title;
         this.content = content;
+    }
+
+    //좋아요 처리
+    public void like(User user) {
+        if (!likedUsers.contains(user)) {
+            likedUsers.add(user);
+            this.likeCount++;
+        }
+    }
+
+    // 좋아요 취소
+    public void unlike(User user) {
+        if (likedUsers.contains(user)) {
+            likedUsers.remove(user);
+            this.likeCount = Math.max(0, this.likeCount - 1);
+        }
+    }
+
+    public boolean isLikedBy(User user) {
+        return likedUsers.contains(user);
     }
 }
