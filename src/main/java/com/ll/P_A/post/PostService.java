@@ -1,6 +1,7 @@
 package com.ll.P_A.post;
 
 import com.ll.P_A.security.User;
+import com.ll.P_A.security.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,8 +13,8 @@ import java.util.List;
 public class PostService {
 
     private final PostRepository postRepository;
+    private final UserRepository userRepository;
 
-    // author: String → User
     @Transactional
     public Long create(PostRequestDto dto, User author) {
         PostEntity post = PostEntity.builder()
@@ -39,7 +40,6 @@ public class PostService {
         return new PostResponseDto(post);
     }
 
-    // 수정/삭제 시 본인 확인은 Controller에서 처리 중
     @Transactional
     public void update(Long id, PostRequestDto dto) {
         PostEntity post = postRepository.findById(id)
@@ -55,10 +55,23 @@ public class PostService {
         postRepository.deleteById(id);
     }
 
-    // 엔티티 직접 반환 (작성자 ID 확인용)
     @Transactional(readOnly = true)
     public PostEntity getEntityById(Long id) {
         return postRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 게시글입니다."));
+    }
+
+    // 좋아요 추가
+    @Transactional
+    public void like(Long postId, User user) {
+        PostEntity post = getEntityById(postId);
+        post.like(user);  // PostEntity 내부에서 중복 방지 처리
+    }
+
+    // 좋아요 취소
+    @Transactional
+    public void unlike(Long postId, User user) {
+        PostEntity post = getEntityById(postId);
+        post.unlike(user);  // PostEntity 내부에서 존재 여부 확인 후 처리
     }
 }
