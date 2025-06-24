@@ -25,19 +25,20 @@ public class PostService {
         return postRepository.save(post).getId();
     }
 
+    // 로그인 유저 기반 전체 목록 조회 (likedByMe 판단 포함)
     @Transactional(readOnly = true)
-    public List<PostResponseDto> getAll() {
+    public List<PostResponseDto> getAll(User loginUser) {
         return postRepository.findAll().stream()
-                .map(PostResponseDto::new)
+                .map(post -> new PostResponseDto(post, loginUser))
                 .toList();
     }
 
+    // 로그인 유저 기반 단일 조회 (likedByMe 판단 포함)
     @Transactional(readOnly = true)
-    public PostResponseDto getById(Long id) {
-        PostEntity post = postRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 게시글입니다."));
+    public PostResponseDto getById(Long id, User loginUser) {
+        PostEntity post = getEntityById(id);
         post.increaseViewCount();
-        return new PostResponseDto(post);
+        return new PostResponseDto(post, loginUser);
     }
 
     @Transactional
@@ -65,20 +66,20 @@ public class PostService {
     @Transactional
     public void like(Long postId, User user) {
         PostEntity post = getEntityById(postId);
-        post.like(user);  // PostEntity 내부에서 중복 방지 처리
+        post.like(user);
     }
 
     // 좋아요 취소
     @Transactional
     public void unlike(Long postId, User user) {
         PostEntity post = getEntityById(postId);
-        post.unlike(user);  // PostEntity 내부에서 존재 여부 확인 후 처리
+        post.unlike(user);
     }
 
-    // 좋아유 누른 여부 확인
+    // 좋아요 누른 여부 확인
     @Transactional(readOnly = true)
     public boolean isLikedByUser(Long postId, User user) {
         PostEntity post = getEntityById(postId);
-        return post.isLikedBy(user);  // PostEntity의 likedUsers에 포함 여부 확인
+        return post.isLikedBy(user);
     }
 }
