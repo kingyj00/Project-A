@@ -3,6 +3,7 @@ package com.ll.P_A.post;
 import com.ll.P_A.security.User;
 import com.ll.P_A.security.UserService;
 import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,19 +31,23 @@ public class PostController {
     }
 
     @GetMapping
-    public ResponseEntity<List<PostResponseDto>> getAllPosts() {
-        List<PostResponseDto> posts = postService.getAll();
+    public ResponseEntity<List<PostResponseDto>> getAllPosts(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        User loginUser = (userId != null) ? userService.findById(userId) : null;
+        List<PostResponseDto> posts = postService.getAll(loginUser);
         return ResponseEntity.ok(posts);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<PostResponseDto> getPost(@PathVariable Long id) {
-        PostResponseDto post = postService.getById(id);
+    public ResponseEntity<PostResponseDto> getPost(@PathVariable Long id, HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        User loginUser = (userId != null) ? userService.findById(userId) : null;
+        PostResponseDto post = postService.getById(id, loginUser);
         return ResponseEntity.ok(post);
     }
 
     @PostMapping
-    public ResponseEntity<Void> createPost(@RequestBody PostRequestDto dto, HttpSession session) {
+    public ResponseEntity<Void> createPost(@Valid @RequestBody PostRequestDto dto, HttpSession session) {
         Long userId = getLoginUserId(session);
         User user = userService.findById(userId);
 
@@ -51,7 +56,7 @@ public class PostController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Void> updatePost(@PathVariable Long id, @RequestBody PostRequestDto dto, HttpSession session) {
+    public ResponseEntity<Void> updatePost(@PathVariable Long id, @Valid @RequestBody PostRequestDto dto, HttpSession session) {
         Long userId = getLoginUserId(session);
         PostEntity post = postService.getEntityById(id);
 
@@ -98,18 +103,16 @@ public class PostController {
 
     // 좋아요 누른 여부 확인
     @GetMapping("/{id}/liked")
-    public ResponseEntity<?> isLiked(@PathVariable Long id, HttpSession session) {
+    public ResponseEntity<Map<String, Boolean>> isLiked(@PathVariable Long id, HttpSession session) {
         Long userId = (Long) session.getAttribute("userId");
+
         if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("{\"liked\": false}");
+            return ResponseEntity.ok(Map.of("liked", false));
         }
 
         User user = userService.findById(userId);
         boolean liked = postService.isLikedByUser(id, user);
 
-        return ResponseEntity.ok().body(
-                Map.of("liked", liked)
-        );
+        return ResponseEntity.ok(Map.of("liked", liked));
     }
 }
