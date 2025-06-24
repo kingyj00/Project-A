@@ -58,26 +58,14 @@ public class PostController {
     @PutMapping("/{id}")
     public ResponseEntity<Void> updatePost(@PathVariable Long id, @Valid @RequestBody PostRequestDto dto, HttpSession session) {
         Long userId = getLoginUserId(session);
-        PostEntity post = postService.getEntityById(id);
-
-        if (!post.getAuthor().getId().equals(userId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "작성자만 수정할 수 있습니다.");
-        }
-
-        postService.update(id, dto);
+        postService.updateByUser(id, dto, userId);
         return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePost(@PathVariable Long id, HttpSession session) {
         Long userId = getLoginUserId(session);
-        PostEntity post = postService.getEntityById(id);
-
-        if (!post.getAuthor().getId().equals(userId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "작성자만 삭제할 수 있습니다.");
-        }
-
-        postService.delete(id);
+        postService.deleteByUser(id, userId);
         return ResponseEntity.noContent().build();
     }
 
