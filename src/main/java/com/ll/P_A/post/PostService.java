@@ -41,21 +41,27 @@ public class PostService {
         return new PostResponseDto(post, loginUser);
     }
 
+    // 작성자 권한 포함한 수정 로직
     @Transactional
-    public void update(Long id, PostRequestDto dto) {
-        PostEntity post = postRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 게시글입니다."));
+    public void updateByUser(Long id, PostRequestDto dto, Long userId) {
+        PostEntity post = getEntityById(id);
+        if (!post.getAuthor().getId().equals(userId)) {
+            throw new IllegalArgumentException("작성자만 수정할 수 있습니다.");
+        }
         post.update(dto.title(), dto.content());
     }
 
+    // 작성자 권한 포함한 삭제 로직
     @Transactional
-    public void delete(Long id) {
-        if (!postRepository.existsById(id)) {
-            throw new IllegalArgumentException("이미 삭제되었거나 없는 글입니다.");
+    public void deleteByUser(Long id, Long userId) {
+        PostEntity post = getEntityById(id);
+        if (!post.getAuthor().getId().equals(userId)) {
+            throw new IllegalArgumentException("작성자만 삭제할 수 있습니다.");
         }
-        postRepository.deleteById(id);
+        postRepository.delete(post);
     }
 
+    // 내부용: 게시글 엔티티 조회
     @Transactional(readOnly = true)
     public PostEntity getEntityById(Long id) {
         return postRepository.findById(id)
@@ -76,7 +82,7 @@ public class PostService {
         post.unlike(user);
     }
 
-    // 좋아요 누른 여부 확인
+    // 좋아요 눌렀는지 여부 확인
     @Transactional(readOnly = true)
     public boolean isLikedByUser(Long postId, User user) {
         PostEntity post = getEntityById(postId);
