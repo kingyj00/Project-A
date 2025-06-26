@@ -1,5 +1,6 @@
 package com.ll.P_A.security;
 
+import com.ll.P_A.security.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -14,7 +15,9 @@ public class UserService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final MailService mailService;
+    private final JwtTokenProvider jwtTokenProvider;
 
+    // ✅ 회원가입
     @Transactional
     public void signup(UserSignupRequest request) {
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
@@ -38,7 +41,8 @@ public class UserService {
         mailService.sendVerificationEmail(user);
     }
 
-    public User login(LoginRequest request) {
+    // 로그인 (세션 대신 JWT 토큰 반환)
+    public String login(LoginRequest request) {
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new IllegalArgumentException("아이디 또는 비밀번호가 올바르지 않습니다."));
 
@@ -50,9 +54,10 @@ public class UserService {
             throw new IllegalStateException("이메일 인증을 완료해주세요.");
         }
 
-        return user;
+        return jwtTokenProvider.generateToken(user.getUsername());
     }
 
+    // 이메일 인증 처리
     @Transactional
     public void verifyEmail(String token) {
         User user = userRepository.findByEmailVerificationToken(token)
@@ -65,20 +70,30 @@ public class UserService {
         user.verifyEmail();
     }
 
+    // 사용자 정보 조회
     public User findById(Long id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자를 찾을 수 없습니다."));
     }
 
+    // username으로 조회 (JWT 인증에서 사용됨)
+    public User findByUsername(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자를 찾을 수 없습니다."));
+    }
+
+    // 내 정보 조회 (프로필)
     public UserProfileResponse getMyProfile(Long id) {
         User user = findById(id);
         return new UserProfileResponse(user.getUsername(), user.getEmail(), user.isEmailVerified());
     }
 
+    // 전체 사용자 요약 목록 (관리자용)
     public List<UserSummary> findAllUsers() {
         return userRepository.findAllUserSummaries();
     }
 
+    // 사용자 정보 수정
     @Transactional
     public void updateUser(UserUpdateRequest request, Long id) {
         User user = findById(id);
@@ -105,6 +120,7 @@ public class UserService {
         }
     }
 
+    // 사용자 삭제
     @Transactional
     public void deleteById(Long id) {
         if (!userRepository.existsById(id)) {
