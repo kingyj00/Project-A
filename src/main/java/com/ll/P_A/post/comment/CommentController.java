@@ -3,6 +3,7 @@ package com.ll.P_A.post.comment;
 import com.ll.P_A.security.User;
 import com.ll.P_A.security.UserService;
 import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,10 +12,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 
 @RestController
-@RequiredArgsConstructor
 @RequestMapping("/api/posts/{postId}/comments")
+@RequiredArgsConstructor
 public class CommentController {
 
     private final CommentService commentService;
@@ -30,7 +32,7 @@ public class CommentController {
 
     @PostMapping
     public ResponseEntity<Void> create(@PathVariable Long postId,
-                                       @RequestBody CommentRequestDto dto,
+                                       @Valid @RequestBody CommentRequestDto dto,
                                        HttpSession session) {
         Long userId = getUserId(session);
         User user = userService.findById(userId);
@@ -48,17 +50,17 @@ public class CommentController {
                                        @PathVariable Long commentId,
                                        HttpSession session) {
         Long userId = getUserId(session);
-        commentService.delete(commentId, userId);
+        commentService.deleteByUser(commentId, userId);
         return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{commentId}")
     public ResponseEntity<Void> update(@PathVariable Long postId,
                                        @PathVariable Long commentId,
-                                       @RequestBody CommentRequestDto dto,
+                                       @Valid @RequestBody CommentRequestDto dto,
                                        HttpSession session) {
         Long userId = getUserId(session);
-        commentService.update(commentId, userId, dto.content());
+        commentService.updateByUser(commentId, userId, dto.content());
         return ResponseEntity.noContent().build();
     }
 }
