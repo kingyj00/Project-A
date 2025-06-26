@@ -1,7 +1,8 @@
 package com.ll.P_A.security;
 
-import jakarta.servlet.http.HttpSession;
+import com.ll.P_A.security.jwt.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -13,39 +14,34 @@ public class UserController {
 
     private final UserService userService;
 
+    // 회원가입
     @PostMapping("/signup")
     public String signup(@RequestBody UserSignupRequest request) {
         userService.signup(request);
         return "가입 완료! 이메일을 확인해주세요.";
     }
 
+    // 이메일 인증
     @GetMapping("/verify-email")
     public String verifyEmail(@RequestParam String token) {
         userService.verifyEmail(token);
         return "이메일 인증 완료!";
     }
 
+    // 로그인 - JWT 토큰 반환
     @PostMapping("/login")
-    public String login(@RequestBody LoginRequest request, HttpSession session) {
-        User user = userService.login(request);
-        session.setAttribute("userId", user.getId());
-        return "로그인 성공";
+    public String login(@RequestBody LoginRequest request) {
+        return userService.login(request); // 토큰 반환
     }
 
-    @PostMapping("/logout")
-    public String logout(HttpSession session) {
-        session.invalidate();
-        return "로그아웃 성공";
-    }
-
+    // 관리자 전용 - 사용자 삭제
     @DeleteMapping("/admin/users/{id}")
-    public String deleteUser(@PathVariable Long id, HttpSession session) {
-        Long requesterId = (Long) session.getAttribute("userId");
-        if (requesterId == null) {
+    public String deleteUser(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails loginUser) {
+        if (loginUser == null) {
             throw new IllegalArgumentException("로그인이 필요합니다.");
         }
 
-        User admin = userService.findById(requesterId);
+        User admin = loginUser.getUser();
         if (!admin.isAdmin()) {
             throw new IllegalArgumentException("관리자만 접근할 수 있습니다.");
         }
@@ -54,14 +50,14 @@ public class UserController {
         return "사용자 삭제 완료";
     }
 
+    // 관리자 전용 - 전체 사용자 조회
     @GetMapping("/admin/users")
-    public List<UserSummary> listUsers(HttpSession session) {
-        Long userId = (Long) session.getAttribute("userId");
-        if (userId == null) {
+    public List<UserSummary> listUsers(@AuthenticationPrincipal CustomUserDetails loginUser) {
+        if (loginUser == null) {
             throw new IllegalArgumentException("로그인이 필요합니다.");
         }
 
-        User admin = userService.findById(userId);
+        User admin = loginUser.getUser();
         if (!admin.isAdmin()) {
             throw new IllegalArgumentException("관리자만 접근할 수 있습니다.");
         }
@@ -69,36 +65,36 @@ public class UserController {
         return userService.findAllUsers();
     }
 
+    // 내 정보 조회
     @GetMapping("/me")
-    public UserProfileResponse getMyInfo(HttpSession session) {
-        Long userId = (Long) session.getAttribute("userId");
-        if (userId == null) {
+    public UserProfileResponse getMyInfo(@AuthenticationPrincipal CustomUserDetails loginUser) {
+        if (loginUser == null) {
             throw new IllegalArgumentException("로그인이 필요합니다.");
         }
 
-        return userService.getMyProfile(userId);
+        return userService.getMyProfile(loginUser.getUser().getId());
     }
 
+    // 내 정보 수정
     @PutMapping("/me")
-    public String updateMyInfo(@RequestBody UserUpdateRequest request, HttpSession session) {
-        Long userId = (Long) session.getAttribute("userId");
-        if (userId == null) {
+    public String updateMyInfo(@RequestBody UserUpdateRequest request,
+                               @AuthenticationPrincipal CustomUserDetails loginUser) {
+        if (loginUser == null) {
             throw new IllegalArgumentException("로그인이 필요합니다.");
         }
 
-        userService.updateUser(request, userId);
+        userService.updateUser(request, loginUser.getUser().getId());
         return "회원정보 수정 완료";
     }
 
+    // 내 계정 삭제
     @DeleteMapping("/me")
-    public String deleteMyAccount(HttpSession session) {
-        Long userId = (Long) session.getAttribute("userId");
-        if (userId == null) {
+    public String deleteMyAccount(@AuthenticationPrincipal CustomUserDetails loginUser) {
+        if (loginUser == null) {
             throw new IllegalArgumentException("로그인이 필요합니다.");
         }
 
-        userService.deleteById(userId);
-        session.invalidate();
+        userService.deleteById(loginUser.getUser().getId());
         return "회원 탈퇴가 완료되었습니다.";
     }
 }
