@@ -8,14 +8,17 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class CommentService {
+
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
 
+    // 댓글 작성
     @Transactional
     public Long create(Long postId, CommentRequestDto dto, User user) {
         PostEntity post = postRepository.findById(postId)
@@ -30,6 +33,7 @@ public class CommentService {
         return commentRepository.save(comment).getId();
     }
 
+    // 게시글에 달린 댓글 조회
     @Transactional(readOnly = true)
     public List<CommentResponseDto> getComments(Long postId) {
         return commentRepository.findByPostIdOrderByCreatedAtAsc(postId)
@@ -38,8 +42,9 @@ public class CommentService {
                 .toList();
     }
 
+    // 작성자 권한 검증 포함한 삭제
     @Transactional
-    public void delete(Long commentId, Long userId) {
+    public void deleteByUser(Long commentId, Long userId) {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new IllegalArgumentException("댓글이 존재하지 않습니다."));
 
@@ -50,8 +55,9 @@ public class CommentService {
         commentRepository.delete(comment);
     }
 
+    // 작성자 권한 검증 포함한 수정
     @Transactional
-    public void update(Long commentId, Long userId, String newContent) {
+    public void updateByUser(Long commentId, Long userId, String newContent) {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new IllegalArgumentException("댓글이 존재하지 않습니다."));
 
