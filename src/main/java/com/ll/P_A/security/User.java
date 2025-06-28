@@ -41,6 +41,8 @@ public class User {
 
     private LocalDateTime tokenGeneratedAt; // 토큰 생성 시간
 
+    private String refreshToken; // 리프레시 토큰 저장
+
     // 이메일 인증 토큰 생성
     public void generateVerificationToken() {
         this.emailVerificationToken = UUID.randomUUID().toString();
@@ -70,5 +72,14 @@ public class User {
 
     public boolean isTokenExpired() {
         return tokenGeneratedAt != null && tokenGeneratedAt.isBefore(LocalDateTime.now().minusMinutes(30));
-    }// 30분안에 인증 안하면 만료
+    }
+
+    // 리프레시 토큰 관련 Setter
+    public void updateRefreshToken(String refreshToken) {
+        this.refreshToken = refreshToken;
+    }
+
+    public void removeRefreshToken() {
+        this.refreshToken = null;
+    }
 }
