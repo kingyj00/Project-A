@@ -13,16 +13,17 @@ import java.util.Date;
 public class JwtTokenProvider {
 
     private final Key secretKey;
-    private final long validityInMilliseconds = 1000 * 60 * 60; // 1시간
+    private final long accessTokenValidity = 1000 * 60 * 60;      // 1시간
+    private final long refreshTokenValidity = 1000L * 60 * 60 * 24 * 7; // 7일
 
     public JwtTokenProvider(@Value("${jwt.secret}") String secret) {
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    // 토큰 생성
-    public String generateToken(String username) {
+    //  Access Token 생성
+    public String generateAccessToken(String username) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + validityInMilliseconds);
+        Date expiryDate = new Date(now.getTime() + accessTokenValidity);
 
         return Jwts.builder()
                 .setSubject(username)
@@ -32,7 +33,19 @@ public class JwtTokenProvider {
                 .compact();
     }
 
-    // 토큰에서 사용자 이름 추출
+    //  Refresh Token 생성
+    public String generateRefreshToken() {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + refreshTokenValidity);
+
+        return Jwts.builder()
+                .setIssuedAt(now)
+                .setExpiration(expiryDate)
+                .signWith(secretKey, SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    //  사용자 이름 추출 (Access Token에만 subject 있음)
     public String getUsernameFromToken(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(secretKey)
@@ -42,7 +55,7 @@ public class JwtTokenProvider {
                 .getSubject();
     }
 
-    // 토큰 유효성 검증
+    //  Access / Refresh Token 유효성 검증
     public boolean validateToken(String token) {
         try {
             Jwts.parserBuilder()
@@ -51,7 +64,17 @@ public class JwtTokenProvider {
                     .parseClaimsJws(token);
             return true;
         } catch (JwtException | IllegalArgumentException e) {
-            return false; // 유효하지 않음
+            return false;
         }
+    }
+
+    //  토큰 만료 시간 추출
+    public Date getExpiration(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(secretKey)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getExpiration();
     }
 }
