@@ -17,7 +17,7 @@ public class UserService {
     private final MailService mailService;
     private final JwtTokenProvider jwtTokenProvider;
 
-    // ✅ 회원가입
+    // 회원가입
     @Transactional
     public void signup(UserSignupRequest request) {
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
@@ -41,8 +41,8 @@ public class UserService {
         mailService.sendVerificationEmail(user);
     }
 
-    // 로그인 (세션 대신 JWT 토큰 반환)
-    public String login(LoginRequest request) {
+    // 로그인 - Access, Refresh Token 반환
+    public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new IllegalArgumentException("아이디 또는 비밀번호가 올바르지 않습니다."));
 
@@ -54,7 +54,10 @@ public class UserService {
             throw new IllegalStateException("이메일 인증을 완료해주세요.");
         }
 
-        return jwtTokenProvider.generateToken(user.getUsername());
+        String accessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
+        String refreshToken = jwtTokenProvider.generateRefreshToken();
+
+        return new LoginResponse(accessToken, refreshToken);
     }
 
     // 이메일 인증 처리
@@ -70,13 +73,13 @@ public class UserService {
         user.verifyEmail();
     }
 
-    // 사용자 정보 조회
+    // 사용자 조회 by ID
     public User findById(Long id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자를 찾을 수 없습니다."));
     }
 
-    // username으로 조회 (JWT 인증에서 사용됨)
+    // 사용자 조회 by Username
     public User findByUsername(String username) {
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자를 찾을 수 없습니다."));
@@ -88,7 +91,7 @@ public class UserService {
         return new UserProfileResponse(user.getUsername(), user.getEmail(), user.isEmailVerified());
     }
 
-    // 전체 사용자 요약 목록 (관리자용)
+    // 관리자 - 전체 사용자 목록
     public List<UserSummary> findAllUsers() {
         return userRepository.findAllUserSummaries();
     }
@@ -98,7 +101,6 @@ public class UserService {
     public void updateUser(UserUpdateRequest request, Long id) {
         User user = findById(id);
 
-        // 비밀번호 변경 시 현재 비밀번호 확인
         if (request.getNewPassword() != null && !request.getNewPassword().isBlank()) {
             if (request.getCurrentPassword() == null || !passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
                 throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
@@ -106,7 +108,6 @@ public class UserService {
             user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         }
 
-        // 이메일 변경 시 인증 다시 받도록
         if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
             user.setEmail(request.getEmail());
             user.setEnabled(false);
@@ -114,7 +115,6 @@ public class UserService {
             mailService.sendVerificationEmail(user);
         }
 
-        // 닉네임 변경
         if (request.getNickname() != null && !request.getNickname().equals(user.getNickname())) {
             user.setNickname(request.getNickname());
         }
