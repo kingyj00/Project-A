@@ -2,8 +2,9 @@ package com.ll.P_A.security;
 
 import com.ll.P_A.security.jwt.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import java.util.List;
 
@@ -28,10 +29,16 @@ public class UserController {
         return "이메일 인증 완료!";
     }
 
-    // 로그인 - JWT 토큰 반환
+    // 로그인 - Access & Refresh Token 반환
     @PostMapping("/login")
-    public String login(@RequestBody LoginRequest request) {
-        return userService.login(request); // 토큰 반환
+    public LoginResponse login(@RequestBody LoginRequest request) {
+        return userService.login(request);
+    }
+
+    // Refresh Token 재발급
+    @PostMapping("/reissue")
+    public LoginResponse reissue(@RequestHeader(HttpHeaders.AUTHORIZATION) String refreshToken) {
+        return userService.reissueToken(refreshToken);
     }
 
     // 관리자 전용 - 사용자 삭제
