@@ -17,7 +17,6 @@ public class UserService {
     private final MailService mailService;
     private final JwtTokenProvider jwtTokenProvider;
 
-    // 회원가입
     @Transactional
     public void signup(UserSignupRequest request) {
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
@@ -41,7 +40,6 @@ public class UserService {
         mailService.sendVerificationEmail(user);
     }
 
-    // 로그인 - Access, Refresh Token 반환
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new IllegalArgumentException("아이디 또는 비밀번호가 올바르지 않습니다."));
@@ -55,12 +53,32 @@ public class UserService {
         }
 
         String accessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
-        String refreshToken = jwtTokenProvider.generateRefreshToken();
+        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getUsername());
+
+        user.updateRefreshToken(refreshToken);
+        userRepository.save(user);
 
         return new LoginResponse(accessToken, refreshToken);
     }
 
-    // 이메일 인증 처리
+    @Transactional
+    public LoginResponse reissueToken(String refreshToken) {
+        if (!jwtTokenProvider.validateToken(refreshToken)) {
+            throw new IllegalArgumentException("Refresh Token이 유효하지 않습니다.");
+        }
+
+        User user = userRepository.findByRefreshToken(refreshToken)
+                .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 Refresh Token입니다."));
+
+        String newAccessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
+        String newRefreshToken = jwtTokenProvider.generateRefreshToken(user.getUsername());
+
+        user.updateRefreshToken(newRefreshToken);
+        userRepository.save(user);
+
+        return new LoginResponse(newAccessToken, newRefreshToken);
+    }
+
     @Transactional
     public void verifyEmail(String token) {
         User user = userRepository.findByEmailVerificationToken(token)
@@ -73,30 +91,25 @@ public class UserService {
         user.verifyEmail();
     }
 
-    // 사용자 조회 by ID
     public User findById(Long id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자를 찾을 수 없습니다."));
     }
 
-    // 사용자 조회 by Username
     public User findByUsername(String username) {
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자를 찾을 수 없습니다."));
     }
 
-    // 내 정보 조회 (프로필)
     public UserProfileResponse getMyProfile(Long id) {
         User user = findById(id);
         return new UserProfileResponse(user.getUsername(), user.getEmail(), user.isEmailVerified());
     }
 
-    // 관리자 - 전체 사용자 목록
     public List<UserSummary> findAllUsers() {
         return userRepository.findAllUserSummaries();
     }
 
-    // 사용자 정보 수정
     @Transactional
     public void updateUser(UserUpdateRequest request, Long id) {
         User user = findById(id);
@@ -105,28 +118,26 @@ public class UserService {
             if (request.getCurrentPassword() == null || !passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
                 throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
             }
-            user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+            user.updatePassword(passwordEncoder.encode(request.getNewPassword()));
         }
 
         if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
-            user.setEmail(request.getEmail());
-            user.setEnabled(false);
-            user.generateVerificationToken();
+            user.changeEmail(request.getEmail());
             mailService.sendVerificationEmail(user);
         }
 
         if (request.getNickname() != null && !request.getNickname().equals(user.getNickname())) {
-            user.setNickname(request.getNickname());
+            user.changeNickname(request.getNickname());
         }
+
+        userRepository.save(user);
     }
 
-    // 사용자 삭제
     @Transactional
     public void deleteById(Long id) {
         if (!userRepository.existsById(id)) {
             throw new IllegalArgumentException("해당 사용자가 존재하지 않습니다.");
         }
-
         userRepository.deleteById(id);
     }
 }
