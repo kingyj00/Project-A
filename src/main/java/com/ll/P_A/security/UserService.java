@@ -64,11 +64,11 @@ public class UserService {
     @Transactional
     public LoginResponse reissueToken(String refreshToken) {
         if (!jwtTokenProvider.validateToken(refreshToken)) {
-            throw new IllegalArgumentException("Refresh Token이 유효하지 않습니다.");
+            throw new IllegalArgumentException("더이상 유효하지 않습니다. 다시 시도해주세요.");
         }
 
         User user = userRepository.findByRefreshToken(refreshToken)
-                .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 Refresh Token입니다."));
+                .orElseThrow(() -> new IllegalArgumentException("유효하지 않는 접근 방식입니다."));
 
         String newAccessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
         String newRefreshToken = jwtTokenProvider.generateRefreshToken(user.getUsername());
@@ -85,7 +85,7 @@ public class UserService {
                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 인증 토큰입니다."));
 
         if (user.isTokenExpired()) {
-            throw new IllegalStateException("인증 토큰이 만료되었습니다. 다시 인증을 요청해주세요.");
+            throw new IllegalStateException("더이상 유효하지 않습니다. 다시 시도해주세요.");
         }
 
         user.verifyEmail();
