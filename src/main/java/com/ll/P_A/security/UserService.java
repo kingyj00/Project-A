@@ -116,7 +116,7 @@ public class UserService {
 
         if (request.getNewPassword() != null && !request.getNewPassword().isBlank()) {
             if (request.getCurrentPassword() == null || !passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
-                throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
+                throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
             }
             user.updatePassword(passwordEncoder.encode(request.getNewPassword()));
         }
@@ -136,7 +136,7 @@ public class UserService {
     @Transactional
     public void deleteById(Long id) {
         if (!userRepository.existsById(id)) {
-            throw new IllegalArgumentException("해당 사용자가 존재하지 않습니다.");
+            throw new IllegalArgumentException("존재하지 않는 계정입니다.");
         }
         userRepository.deleteById(id);
     }
