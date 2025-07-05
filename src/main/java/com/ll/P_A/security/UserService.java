@@ -82,7 +82,7 @@ public class UserService {
     @Transactional
     public void verifyEmail(String token) {
         User user = userRepository.findByEmailVerificationToken(token)
-                .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 인증 토큰입니다."));
+                .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 접근 방식입니다."));
 
         if (user.isTokenExpired()) {
             throw new IllegalStateException("더이상 유효하지 않습니다. 다시 시도해주세요.");
