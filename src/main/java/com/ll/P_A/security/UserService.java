@@ -64,7 +64,7 @@ public class UserService {
     @Transactional
     public LoginResponse reissueToken(String refreshToken) {
         if (!jwtTokenProvider.validateToken(refreshToken)) {
-            throw new IllegalArgumentException("더이상 유효하지 않습니다. 다시 시도해주세요.");
+            throw new IllegalArgumentException("유효하지 않는 접근 방식입니다.");
         }
 
         User user = userRepository.findByRefreshToken(refreshToken)
@@ -85,7 +85,7 @@ public class UserService {
                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 접근 방식입니다."));
 
         if (user.isTokenExpired()) {
-            throw new IllegalStateException("더이상 유효하지 않습니다. 다시 시도해주세요.");
+            throw new IllegalStateException("유효하지 않는 접근 방식입니다.");
         }
 
         user.verifyEmail();
