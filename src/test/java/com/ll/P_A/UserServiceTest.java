@@ -1,0 +1,71 @@
+package com.ll.P_A;
+
+import com.ll.P_A.security.MailService;
+import com.ll.P_A.security.UserRepository;
+import com.ll.P_A.security.UserService;
+import com.ll.P_A.security.UserSignupRequest;
+import com.ll.P_A.security.jwt.JwtTokenProvider;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.*;
+
+public class UserServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private BCryptPasswordEncoder passwordEncoder;
+
+    @Mock
+    private MailService mailService;
+
+    @Mock
+    private JwtTokenProvider jwtTokenProvider;
+
+    @InjectMocks
+    private UserService userService;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+    }
+
+    @Test
+    void signup_ThrowsException_WhenUsernameExists() {
+        UserSignupRequest request = new UserSignupRequest("existingUser", "email@test.com", "password");
+        when(userRepository.findByUsername("existingUser")).thenReturn(Optional.of(new User()));
+
+        assertThrows(IllegalArgumentException.class, () -> userService.signup(request));
+    }
+
+    @Test
+    void signup_ThrowsException_WhenEmailExists() {
+        UserSignupRequest request = new UserSignupRequest("newUser", "email@test.com", "password");
+        when(userRepository.findByUsername("newUser")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("email@test.com")).thenReturn(Optional.of(new User()));
+
+        assertThrows(IllegalArgumentException.class, () -> userService.signup(request));
+    }
+
+    @Test
+    void signup_Successful_WhenValidRequest() {
+        UserSignupRequest request = new UserSignupRequest("newUser", "new@test.com", "password");
+        when(userRepository.findByUsername("newUser")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("new@test.com")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode("password")).thenReturn("encodedPassword");
+
+        userService.signup(request);
+
+        verify(userRepository).save(any(User.class));
+        verify(mailService).sendVerificationEmail(any(User.class));
+    }
+}
