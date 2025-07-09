@@ -41,7 +41,7 @@ public class UserServiceTest {
 
     @Test
     void signup_ThrowsException_WhenUsernameExists() {
-        UserSignupRequest request = new UserSignupRequest("existingUser", "email@test.com", "password");
+        UserSignupRequest request = new UserSignupRequest("existingUser", "password", "nickname", "email@test.com");
         when(userRepository.findByUsername("existingUser")).thenReturn(Optional.of(new User()));
 
         assertThrows(IllegalArgumentException.class, () -> userService.signup(request));
@@ -49,7 +49,7 @@ public class UserServiceTest {
 
     @Test
     void signup_ThrowsException_WhenEmailExists() {
-        UserSignupRequest request = new UserSignupRequest("newUser", "email@test.com", "password");
+        UserSignupRequest request = new UserSignupRequest("newUser", "password", "nickname", "email@test.com");
         when(userRepository.findByUsername("newUser")).thenReturn(Optional.empty());
         when(userRepository.findByEmail("email@test.com")).thenReturn(Optional.of(new User()));
 
@@ -58,7 +58,7 @@ public class UserServiceTest {
 
     @Test
     void signup_Successful_WhenValidRequest() {
-        UserSignupRequest request = new UserSignupRequest("newUser", "new@test.com", "password");
+        UserSignupRequest request = new UserSignupRequest("newUser", "password", "nickname", "new@test.com");
         when(userRepository.findByUsername("newUser")).thenReturn(Optional.empty());
         when(userRepository.findByEmail("new@test.com")).thenReturn(Optional.empty());
         when(passwordEncoder.encode("password")).thenReturn("encodedPassword");
