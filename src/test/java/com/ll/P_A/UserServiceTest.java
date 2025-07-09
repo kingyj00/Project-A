@@ -12,7 +12,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import com.ll.P_A.security.User;
-
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -43,7 +42,13 @@ public class UserServiceTest {
     @Test
     void signup_ThrowsException_WhenUsernameExists() {
         UserSignupRequest request = new UserSignupRequest("existingUser", "password", "nickname", "email@test.com");
-        when(userRepository.findByUsername("existingUser")).thenReturn(Optional.of(new User()));
+        User user = User.builder()
+                .username("existingUser")
+                .password("encodedPassword")
+                .nickname("tester")
+                .email("email@test.com")
+                .build();
+        when(userRepository.findByUsername("existingUser")).thenReturn(Optional.of(user));
 
         assertThrows(IllegalArgumentException.class, () -> userService.signup(request));
     }
@@ -52,7 +57,13 @@ public class UserServiceTest {
     void signup_ThrowsException_WhenEmailExists() {
         UserSignupRequest request = new UserSignupRequest("newUser", "password", "nickname", "email@test.com");
         when(userRepository.findByUsername("newUser")).thenReturn(Optional.empty());
-        when(userRepository.findByEmail("email@test.com")).thenReturn(Optional.of(new User()));
+        User user = User.builder()
+                .username("someone")
+                .password("encoded")
+                .nickname("tester")
+                .email("email@test.com")
+                .build();
+        when(userRepository.findByEmail("email@test.com")).thenReturn(Optional.of(user));
 
         assertThrows(IllegalArgumentException.class, () -> userService.signup(request));
     }
