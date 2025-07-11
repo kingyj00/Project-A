@@ -2,18 +2,18 @@ package com.ll.P_A;
 
 import com.ll.P_A.security.User;
 import com.ll.P_A.security.UserRepository;
-import com.ll.P_A.security.jwt.CustomUserDetails;
 import com.ll.P_A.security.jwt.CustomUserDetailsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
@@ -31,7 +31,7 @@ class CustomUserDetailsServiceTest {
     }
 
     @Test
-    void loadUserByUsername_ReturnsCustomUserDetails_WhenUserExists() {
+    void loadUserByUsername_ReturnsUserDetails_WhenUserExists() {
         User user = User.builder()
                 .username("testuser")
                 .password("encodedPassword")
@@ -41,11 +41,10 @@ class CustomUserDetailsServiceTest {
 
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(user));
 
-        assertDoesNotThrow(() -> {
-            CustomUserDetails details = (CustomUserDetails) customUserDetailsService.loadUserByUsername("testuser");
-            assertEquals("testuser", details.getUsername());
-            assertEquals("encodedPassword", details.getPassword());
-        });
+        UserDetails details = customUserDetailsService.loadUserByUsername("testuser");
+
+        assertEquals("testuser", details.getUsername());
+        assertEquals("encodedPassword", details.getPassword());
     }
 
     @Test
