@@ -35,6 +35,17 @@ public class UserController {
         return userService.login(request);
     }
 
+    // 로그아웃 - Redis에서 Refresh Token 삭제
+    @PostMapping("/logout")
+    public String logout(@AuthenticationPrincipal CustomUserDetails loginUser) {
+        if (loginUser == null) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        userService.logout(loginUser.getUsername());
+        return "로그아웃 완료되었습니다.";
+    }
+
     // Refresh Token 재발급
     @PostMapping("/reissue")
     public LoginResponse reissue(@RequestHeader(HttpHeaders.AUTHORIZATION) String refreshToken) {
