@@ -66,7 +66,7 @@ public class UserService {
             throw new IllegalArgumentException("유효하지 않는 접근 방식입니다.");
         }
 
-        String username = jwtTokenProvider.getUsername(refreshToken);
+        String username = jwtTokenProvider.getUsernameFromToken(refreshToken);
         String savedToken = refreshTokenService.get(username);
 
         if (!refreshToken.equals(savedToken)) {
