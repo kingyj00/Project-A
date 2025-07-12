@@ -16,6 +16,7 @@ public class UserService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final MailService mailService;
     private final JwtTokenProvider jwtTokenProvider;
+    private final RefreshTokenService refreshTokenService;
 
     @Transactional
     public void signup(UserSignupRequest request) {
@@ -55,9 +56,7 @@ public class UserService {
         String accessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getUsername());
 
-        user.updateRefreshToken(refreshToken);
-        userRepository.save(user);
-
+        refreshTokenService.save(user.getUsername(), refreshToken); // Redis에 저장
         return new LoginResponse(accessToken, refreshToken);
     }
 
@@ -67,16 +66,23 @@ public class UserService {
             throw new IllegalArgumentException("유효하지 않는 접근 방식입니다.");
         }
 
-        User user = userRepository.findByRefreshToken(refreshToken)
-                .orElseThrow(() -> new IllegalArgumentException("유효하지 않는 접근 방식입니다."));
+        String username = jwtTokenProvider.getUsername(refreshToken);
+        String savedToken = refreshTokenService.get(username);
 
-        String newAccessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
-        String newRefreshToken = jwtTokenProvider.generateRefreshToken(user.getUsername());
+        if (!refreshToken.equals(savedToken)) {
+            throw new IllegalArgumentException("이미 만료되었거나 일치하지 않는 토큰입니다.");
+        }
 
-        user.updateRefreshToken(newRefreshToken);
-        userRepository.save(user);
+        String newAccessToken = jwtTokenProvider.generateAccessToken(username);
+        String newRefreshToken = jwtTokenProvider.generateRefreshToken(username);
+        refreshTokenService.save(username, newRefreshToken); // Redis 갱신
 
         return new LoginResponse(newAccessToken, newRefreshToken);
+    }
+
+    @Transactional
+    public void logout(String username) {
+        refreshTokenService.delete(username); // Redis에서 삭제
     }
 
     @Transactional
