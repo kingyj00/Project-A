@@ -12,6 +12,6 @@ public class PAApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(PAApplication.class, args);
-		log.info("HELLO"); // 로그에 출력
+		log.info("Server Start"); // 로그에 출력
 	}
 }
