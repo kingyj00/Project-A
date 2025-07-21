@@ -1,5 +1,6 @@
 package com.ll.P_A;
 
+import com.ll.P_A.global.exception.AuthorizationValidator;
 import com.ll.P_A.post.PostEntity;
 import com.ll.P_A.post.PostRepository;
 import com.ll.P_A.post.PostRequestDto;
@@ -20,13 +21,15 @@ class PostServiceTest {
 
     private PostRepository postRepository;
     private UserRepository userRepository;
+    private AuthorizationValidator authValidator;
     private PostService postService;
 
     @BeforeEach
     void setUp() {
         postRepository = mock(PostRepository.class);
         userRepository = mock(UserRepository.class);
-        postService = new PostService(postRepository, userRepository);
+        authValidator = mock(AuthorizationValidator.class);
+        postService = new PostService(postRepository, userRepository, authValidator);
     }
 
     @Test
@@ -103,7 +106,7 @@ class PostServiceTest {
                 .title("title")
                 .content("content")
                 .author(user)
-                .viewCount(0) // corrected to int
+                .viewCount(0)
                 .build();
 
         when(postRepository.findById(1L)).thenReturn(Optional.of(post));
@@ -112,8 +115,8 @@ class PostServiceTest {
         var result = postService.getById(1L, user);
 
         // then
-        assertThat(result.toString()).contains("title"); // indirect check
-        assertThat(post.getViewCount()).isEqualTo(1L);
+        assertThat(result.toString()).contains("title");
+        assertThat(post.getViewCount()).isEqualTo(1);
     }
 
     @Test
@@ -140,6 +143,7 @@ class PostServiceTest {
         postService.updateByUser(1L, dto, user.getId());
 
         // then
+        verify(authValidator).validateAuthor(post.getAuthor(), user.getId()); //권한 검사 호출 여부 검증
         assertThat(post.getTitle()).isEqualTo("new title");
         assertThat(post.getContent()).isEqualTo("new content");
     }
