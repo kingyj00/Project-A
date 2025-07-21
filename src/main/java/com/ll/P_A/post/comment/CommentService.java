@@ -24,7 +24,7 @@ public class CommentService {
         PostEntity post = postRepository.findById(postId)
                 .orElseThrow(() -> new IllegalArgumentException("게시글이 존재하지 않습니다."));
 
-        Comment comment = Comment.builder()
+        CommentEntity comment = CommentEntity.builder()
                 .content(dto.content())
                 .post(post)
                 .author(user)
@@ -45,7 +45,7 @@ public class CommentService {
     // 작성자 권한 검증 포함한 삭제
     @Transactional
     public void deleteByUser(Long commentId, Long userId) {
-        Comment comment = commentRepository.findById(commentId)
+        CommentEntity comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new IllegalArgumentException("댓글이 존재하지 않습니다."));
 
         if (!comment.getAuthor().getId().equals(userId)) {
@@ -58,7 +58,7 @@ public class CommentService {
     // 작성자 권한 검증 포함한 수정
     @Transactional
     public void updateByUser(Long commentId, Long userId, String newContent) {
-        Comment comment = commentRepository.findById(commentId)
+        CommentEntity comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new IllegalArgumentException("댓글이 존재하지 않습니다."));
 
         if (!comment.getAuthor().getId().equals(userId)) {
