@@ -9,7 +9,7 @@ public record CommentResponseDto(
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
-    public CommentResponseDto(Comment comment) {
+    public CommentResponseDto(CommentEntity comment) {
         this(
                 comment.getId(),
                 comment.getContent(),
