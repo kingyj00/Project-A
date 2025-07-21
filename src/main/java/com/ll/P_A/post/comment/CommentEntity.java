@@ -31,8 +31,20 @@ public class CommentEntity {
 
     private LocalDateTime createdAt;
 
+    private LocalDateTime updatedAt;
+
     @PrePersist
     public void onCreate() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    public void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void setContent(String content) {
+        this.content = content;
+        this.updatedAt = LocalDateTime.now();
     }
 }
