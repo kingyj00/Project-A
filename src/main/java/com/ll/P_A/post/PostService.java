@@ -1,5 +1,6 @@
 package com.ll.P_A.post;
 
+import com.ll.P_A.global.exception.AuthorizationValidator;
 import com.ll.P_A.security.User;
 import com.ll.P_A.security.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final UserRepository userRepository;
+    private final AuthorizationValidator authValidator; //권한 검증기 주입
 
     @Transactional
     public Long create(PostRequestDto dto, User author) {
@@ -45,9 +47,7 @@ public class PostService {
     @Transactional
     public void updateByUser(Long id, PostRequestDto dto, Long userId) {
         PostEntity post = getEntityById(id);
-        if (!post.getAuthor().getId().equals(userId)) {
-            throw new IllegalArgumentException("작성자만 수정할 수 있습니다.");
-        }
+        authValidator.validateAuthor(post.getAuthor(), userId); //권한 검증
         post.update(dto.title(), dto.content());
     }
 
@@ -55,9 +55,7 @@ public class PostService {
     @Transactional
     public void deleteByUser(Long id, Long userId) {
         PostEntity post = getEntityById(id);
-        if (!post.getAuthor().getId().equals(userId)) {
-            throw new IllegalArgumentException("작성자만 삭제할 수 있습니다.");
-        }
+        authValidator.validateAuthor(post.getAuthor(), userId); //권한 검증
         postRepository.delete(post);
     }
 
