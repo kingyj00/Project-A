@@ -26,7 +26,7 @@ public class PostEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private User author;  // String → User 객체로 변경
+    private User author;
 
     private int viewCount;
     private int likeCount;
@@ -34,14 +34,14 @@ public class PostEntity {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    //좋아요 누른 유저 목록
+    @Builder.Default
     @ManyToMany
     @JoinTable(
             name = "post_likes",
             joinColumns = @JoinColumn(name = "post_id"),
             inverseJoinColumns = @JoinColumn(name = "user_id")
     )
-    private Set<User> likedUsers = new HashSet<>();
+    private Set<User> likedUsers = new HashSet<>(); // ✅ Builder 사용 시도 null 방지
 
     @PrePersist
     public void prePersist() {
@@ -65,7 +65,6 @@ public class PostEntity {
         this.content = content;
     }
 
-    //좋아요 처리
     public void like(User user) {
         if (!likedUsers.contains(user)) {
             likedUsers.add(user);
@@ -73,7 +72,6 @@ public class PostEntity {
         }
     }
 
-    // 좋아요 취소
     public void unlike(User user) {
         if (likedUsers.contains(user)) {
             likedUsers.remove(user);
