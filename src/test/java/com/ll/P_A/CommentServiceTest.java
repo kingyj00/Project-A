@@ -34,7 +34,7 @@ class CommentServiceTest {
         PostEntity post = PostEntity.builder().id(1L).title("post").build();
         CommentRequestDto dto = new CommentRequestDto("test comment");
 
-        Comment comment = Comment.builder()
+        CommentEntity comment = CommentEntity.builder()
                 .id(100L)
                 .content("test comment")
                 .author(user)
@@ -42,22 +42,23 @@ class CommentServiceTest {
                 .build();
 
         when(postRepository.findById(1L)).thenReturn(Optional.of(post));
-        when(commentRepository.save(any(Comment.class))).thenReturn(comment);
+        when(commentRepository.save(any(CommentEntity.class))).thenReturn(comment);
 
         // when
         Long commentId = commentService.create(1L, dto, user);
 
         // then
         assertThat(commentId).isEqualTo(100L);
-        verify(commentRepository).save(any(Comment.class));
+        verify(commentRepository).save(any(CommentEntity.class));
     }
 
     @Test
     void getComments_shouldReturnCommentResponseDtoList() {
         // given
-        Comment comment = Comment.builder()
+        CommentEntity comment = CommentEntity.builder()
                 .id(1L)
                 .content("hello")
+                .author(User.builder().username("user").build())
                 .build();
 
         when(commentRepository.findByPostIdOrderByCreatedAtAsc(1L))
@@ -75,7 +76,7 @@ class CommentServiceTest {
     void deleteByUser_shouldRemoveCommentIfUserMatches() {
         // given
         User user = User.builder().id(1L).username("u").build();
-        Comment comment = Comment.builder()
+        CommentEntity comment = CommentEntity.builder()
                 .id(1L)
                 .content("bye")
                 .author(user)
@@ -94,7 +95,7 @@ class CommentServiceTest {
     void deleteByUser_shouldThrowIfUserMismatch() {
         // given
         User author = User.builder().id(1L).build();
-        Comment comment = Comment.builder()
+        CommentEntity comment = CommentEntity.builder()
                 .id(1L)
                 .content("secret")
                 .author(author)
