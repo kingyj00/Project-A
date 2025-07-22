@@ -1,5 +1,6 @@
 package com.ll.P_A;
 
+import com.ll.P_A.global.exception.AuthorizationValidator;
 import com.ll.P_A.post.PostEntity;
 import com.ll.P_A.post.PostRepository;
 import com.ll.P_A.post.comment.*;
@@ -18,13 +19,15 @@ class CommentServiceTest {
 
     private CommentRepository commentRepository;
     private PostRepository postRepository;
+    private AuthorizationValidator authValidator;
     private CommentService commentService;
 
     @BeforeEach
     void setUp() {
         commentRepository = mock(CommentRepository.class);
         postRepository = mock(PostRepository.class);
-        commentService = new CommentService(commentRepository, postRepository);
+        authValidator = mock(AuthorizationValidator.class);
+        commentService = new CommentService(commentRepository, postRepository, authValidator);
     }
 
     @Test
@@ -69,7 +72,7 @@ class CommentServiceTest {
 
         // then
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).toString()).contains("hello"); // indirect validation
+        assertThat(result.get(0).toString()).contains("hello");
     }
 
     @Test
@@ -88,6 +91,7 @@ class CommentServiceTest {
         commentService.deleteByUser(1L, 1L);
 
         // then
+        verify(authValidator).validateAuthor(comment.getAuthor(), 1L); // 검증 호출 확인
         verify(commentRepository).delete(comment);
     }
 
@@ -102,6 +106,8 @@ class CommentServiceTest {
                 .build();
 
         when(commentRepository.findById(1L)).thenReturn(Optional.of(comment));
+        doThrow(new RuntimeException("작성자만 삭제할 수 있습니다."))
+                .when(authValidator).validateAuthor(author, 2L); // 예외 유도
 
         // when & then
         assertThatThrownBy(() -> commentService.deleteByUser(1L, 2L))
