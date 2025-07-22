@@ -1,13 +1,12 @@
 package com.ll.P_A.post.comment;
 
+import com.ll.P_A.global.exception.AuthorizationValidator;
 import com.ll.P_A.post.PostEntity;
 import com.ll.P_A.post.PostRepository;
 import com.ll.P_A.security.User;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -17,6 +16,7 @@ public class CommentService {
 
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
+    private final AuthorizationValidator authValidator;
 
     // 댓글 작성
     @Transactional
@@ -48,10 +48,7 @@ public class CommentService {
         CommentEntity comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new IllegalArgumentException("댓글이 존재하지 않습니다."));
 
-        if (!comment.getAuthor().getId().equals(userId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "작성자만 삭제할 수 있습니다.");
-        }
-
+        authValidator.validateAuthor(comment.getAuthor(), userId);
         commentRepository.delete(comment);
     }
 
@@ -61,10 +58,7 @@ public class CommentService {
         CommentEntity comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new IllegalArgumentException("댓글이 존재하지 않습니다."));
 
-        if (!comment.getAuthor().getId().equals(userId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "작성자만 수정할 수 있습니다.");
-        }
-
+        authValidator.validateAuthor(comment.getAuthor(), userId);
         comment.setContent(newContent);
     }
 }
