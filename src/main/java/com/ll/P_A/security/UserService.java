@@ -1,5 +1,6 @@
 package com.ll.P_A.security;
 
+import com.ll.P_A.global.exception.AuthorizationValidator;
 import com.ll.P_A.security.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -17,6 +18,7 @@ public class UserService {
     private final MailService mailService;
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenService refreshTokenService;
+    private final AuthorizationValidator authValidator; // 추가
 
     @Transactional
     public void signup(UserSignupRequest request) {
@@ -117,8 +119,9 @@ public class UserService {
     }
 
     @Transactional
-    public void updateUser(UserUpdateRequest request, Long id) {
+    public void updateUser(UserUpdateRequest request, Long id, Long currentUserId) {
         User user = findById(id);
+        authValidator.validateAuthor(user, currentUserId); // 권한 확인
 
         if (request.getNewPassword() != null && !request.getNewPassword().isBlank()) {
             if (request.getCurrentPassword() == null || !passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
@@ -140,10 +143,9 @@ public class UserService {
     }
 
     @Transactional
-    public void deleteById(Long id) {
-        if (!userRepository.existsById(id)) {
-            throw new IllegalArgumentException("존재하지 않는 계정입니다.");
-        }
-        userRepository.deleteById(id);
+    public void deleteById(Long id, Long currentUserId) {
+        User user = findById(id);
+        authValidator.validateAuthor(user, currentUserId); //권한 확인
+        userRepository.delete(user);
     }
 }
