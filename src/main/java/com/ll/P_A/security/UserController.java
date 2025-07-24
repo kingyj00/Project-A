@@ -94,7 +94,7 @@ public class UserController {
         }
 
         Long currentUserId = loginUser.getUser().getId();
-        userService.updateUser(request, currentUserId, currentUserId); // ✅ 로그인 ID를 검증용으로 전달
+        userService.updateUser(request, currentUserId, currentUserId); // 그인 ID를 검증용으로 전달
         return "회원정보 수정 완료";
     }
 
