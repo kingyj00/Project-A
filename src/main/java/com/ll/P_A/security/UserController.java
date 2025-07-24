@@ -105,7 +105,7 @@ public class UserController {
         }
 
         Long currentUserId = loginUser.getUser().getId();
-        userService.deleteById(currentUserId, currentUserId); // ✅ 로그인 ID를 검증용으로 전달
+        userService.deleteById(currentUserId, currentUserId); //로그인 ID를 검증용으로 전달
         return "회원 탈퇴가 완료되었습니다.";
     }
 }
