@@ -1,9 +1,7 @@
 package com.ll.P_A;
 
-import com.ll.P_A.security.MailService;
-import com.ll.P_A.security.UserRepository;
-import com.ll.P_A.security.UserService;
-import com.ll.P_A.security.UserSignupRequest;
+import com.ll.P_A.global.exception.AuthorizationValidator;
+import com.ll.P_A.security.*;
 import com.ll.P_A.security.jwt.JwtTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,10 +9,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import com.ll.P_A.security.User;
+
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 public class UserServiceTest {
@@ -30,6 +28,12 @@ public class UserServiceTest {
 
     @Mock
     private JwtTokenProvider jwtTokenProvider;
+
+    @Mock
+    private RefreshTokenService refreshTokenService;
+
+    @Mock
+    private AuthorizationValidator authValidator;
 
     @InjectMocks
     private UserService userService;
@@ -79,5 +83,40 @@ public class UserServiceTest {
 
         verify(userRepository).save(any(User.class));
         verify(mailService).sendVerificationEmail(any(User.class));
+    }
+
+    @Test
+    void updateUser_Successful_WhenPasswordMatches() {
+        User user = User.builder()
+                .id(1L)
+                .username("user")
+                .password("encodedPw")
+                .nickname("oldNick")
+                .email("old@email.com")
+                .build();
+
+        UserUpdateRequest request = new UserUpdateRequest("encodedPw", "newPw", "new@email.com", "newNick");
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("encodedPw", "encodedPw")).thenReturn(true);
+        when(passwordEncoder.encode("newPw")).thenReturn("encodedNewPw");
+
+        userService.updateUser(request, 1L, 1L);
+
+        verify(authValidator).validateAuthor(user, 1L);
+        assertEquals("new@email.com", user.getEmail());
+        assertEquals("newNick", user.getNickname());
+    }
+
+    @Test
+    void deleteById_Successful_WhenAuthorized() {
+        User user = User.builder().id(1L).build();
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.existsById(1L)).thenReturn(true);
+
+        userService.deleteById(1L, 1L);
+
+        verify(authValidator).validateAuthor(user, 1L);
+        verify(userRepository).deleteById(1L);
     }
 }
