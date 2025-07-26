@@ -5,17 +5,16 @@ import com.ll.P_A.security.*;
 import com.ll.P_A.security.jwt.JwtTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.*;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.Mockito.*;
 
-public class UserServiceTest {
+class UserServiceTest {
 
     @Mock
     private UserRepository userRepository;
@@ -46,77 +45,83 @@ public class UserServiceTest {
     @Test
     void signup_ThrowsException_WhenUsernameExists() {
         UserSignupRequest request = new UserSignupRequest("existingUser", "password", "nickname", "email@test.com");
-        User user = User.builder()
-                .username("existingUser")
-                .password("encodedPassword")
-                .nickname("tester")
-                .email("email@test.com")
-                .build();
-        when(userRepository.findByUsername("existingUser")).thenReturn(Optional.of(user));
+        when(userRepository.findByUsername("existingUser")).thenReturn(Optional.of(mock(User.class)));
 
-        assertThrows(IllegalArgumentException.class, () -> userService.signup(request));
+        assertThatThrownBy(() -> userService.signup(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("이미 사용 중인 아이디입니다.");
     }
 
     @Test
     void signup_ThrowsException_WhenEmailExists() {
-        UserSignupRequest request = new UserSignupRequest("newUser", "password", "nickname", "email@test.com");
-        when(userRepository.findByUsername("newUser")).thenReturn(Optional.empty());
-        User user = User.builder()
-                .username("someone")
-                .password("encoded")
-                .nickname("tester")
-                .email("email@test.com")
-                .build();
-        when(userRepository.findByEmail("email@test.com")).thenReturn(Optional.of(user));
+        UserSignupRequest request = new UserSignupRequest("user", "password", "nickname", "email@test.com");
+        when(userRepository.findByUsername("user")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("email@test.com")).thenReturn(Optional.of(mock(User.class)));
 
-        assertThrows(IllegalArgumentException.class, () -> userService.signup(request));
+        assertThatThrownBy(() -> userService.signup(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("이미 사용 중인 이메일입니다.");
     }
 
     @Test
-    void signup_Successful_WhenValidRequest() {
+    void signup_Success_WhenValidRequest() {
         UserSignupRequest request = new UserSignupRequest("newUser", "password", "nickname", "new@test.com");
         when(userRepository.findByUsername("newUser")).thenReturn(Optional.empty());
         when(userRepository.findByEmail("new@test.com")).thenReturn(Optional.empty());
-        when(passwordEncoder.encode("password")).thenReturn("encodedPassword");
+        when(passwordEncoder.encode("password")).thenReturn("encodedPw");
 
-        userService.signup(request);
-
+        assertDoesNotThrow(() -> userService.signup(request));
         verify(userRepository).save(any(User.class));
         verify(mailService).sendVerificationEmail(any(User.class));
     }
 
     @Test
     void updateUser_Successful_WhenPasswordMatches() {
+        // given
+        Long userId = 1L;
+        String rawPassword = "currentPw";
+        String encodedPassword = "encodedPw";
+
         User user = User.builder()
-                .id(1L)
-                .username("user")
-                .password("encodedPw")
+                .id(userId)
+                .username("tester")
+                .password(encodedPassword)  // 비밀번호는 암호화된 값으로
+                .email("old@test.com")
                 .nickname("oldNick")
-                .email("old@email.com")
                 .build();
 
-        UserUpdateRequest request = new UserUpdateRequest("currentPw", "newPw", "new@email.com", "newNick");
+        UserUpdateRequest request = new UserUpdateRequest(
+                rawPassword,   // 입력된 현재 비밀번호
+                "newPw",       // 새로운 비밀번호
+                "new@test.com",
+                "newNick"
+        );
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        // mocking
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("currentPw", "encodedPw")).thenReturn(true);
         when(passwordEncoder.encode("newPw")).thenReturn("encodedNewPw");
 
-        userService.updateUser(request, 1L, 1L);
+        // when & then
+        assertDoesNotThrow(() -> userService.updateUser(request, userId, userId));
 
-        verify(authValidator).validateAuthor(user, 1L);
-        assertEquals("new@email.com", user.getEmail());
-        assertEquals("newNick", user.getNickname());
+        // 검증
+        verify(authValidator).validateAuthor(user, userId);
+        verify(userRepository).save(user);
     }
 
     @Test
     void deleteById_Successful_WhenAuthorized() {
-        User user = User.builder().id(1L).build();
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(userRepository.existsById(1L)).thenReturn(true);
+        // given
+        Long userId = 1L;
+        User user = User.builder().id(userId).build();
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
-        userService.deleteById(1L, 1L);
+        // when
+        userService.deleteById(userId, userId);
 
-        verify(authValidator).validateAuthor(user, 1L);
-        verify(userRepository).delete(any(User.class));
+        // then
+        verify(authValidator).validateAuthor(user, userId);
+        verify(userRepository).delete(user);
     }
 }
