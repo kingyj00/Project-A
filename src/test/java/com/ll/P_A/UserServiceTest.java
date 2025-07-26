@@ -95,10 +95,10 @@ public class UserServiceTest {
                 .email("old@email.com")
                 .build();
 
-        UserUpdateRequest request = new UserUpdateRequest("encodedPw", "newPw", "new@email.com", "newNick");
+        UserUpdateRequest request = new UserUpdateRequest("currentPw", "newPw", "new@email.com", "newNick");
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches("encodedPw", "encodedPw")).thenReturn(true);
+        when(passwordEncoder.matches("currentPw", "encodedPw")).thenReturn(true);
         when(passwordEncoder.encode("newPw")).thenReturn("encodedNewPw");
 
         userService.updateUser(request, 1L, 1L);
@@ -117,6 +117,6 @@ public class UserServiceTest {
         userService.deleteById(1L, 1L);
 
         verify(authValidator).validateAuthor(user, 1L);
-        verify(userRepository).deleteById(1L);
+        verify(userRepository).delete(any(User.class));
     }
 }
