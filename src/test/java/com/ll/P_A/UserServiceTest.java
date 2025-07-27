@@ -82,16 +82,19 @@ class UserServiceTest {
         // given
         Long userId = 1L;
 
+        String rawPassword = "currentPw";
+        String encodedPassword = "encodedPw";
+
         User user = User.builder()
                 .id(userId)
                 .username("tester")
-                .password("encodedPw")
+                .password(encodedPassword)
                 .email("old@test.com")
                 .nickname("oldNick")
                 .build();
 
         UserUpdateRequest request = new UserUpdateRequest(
-                "currentPw",
+                rawPassword,
                 "newPw",
                 "new@test.com",
                 "newNick"
@@ -99,7 +102,7 @@ class UserServiceTest {
 
         // mocking
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches("currentPw", "encodedPw")).thenReturn(true);
+        when(passwordEncoder.matches(eq(rawPassword), eq(encodedPassword))).thenReturn(true);
         when(passwordEncoder.encode("newPw")).thenReturn("encodedNewPw");
 
         // when & then
