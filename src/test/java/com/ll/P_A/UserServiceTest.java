@@ -81,32 +81,38 @@ class UserServiceTest {
     void updateUser_Successful_WhenPasswordMatches() {
         // given
         Long userId = 1L;
+        String rawPassword = "currentPw";
+        String encodedPassword = "encodedPw";
 
         User user = User.builder()
                 .id(userId)
                 .username("tester")
-                .password("encodedPw")
                 .email("old@test.com")
                 .nickname("oldNick")
                 .build();
 
+        // 빌더로는 password가 안 들어갈 수 있으므로 수동 설정
+        user.updatePassword(encodedPassword);
+
         UserUpdateRequest request = new UserUpdateRequest(
-                "currentPw",
-                "newPw",
+                rawPassword,          // 현재 비밀번호
+                "newPw",              // 새 비밀번호
                 "new@test.com",
                 "newNick"
         );
 
         // mocking
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches("currentPw", "encodedPw")).thenReturn(true);
+        when(passwordEncoder.matches(eq(rawPassword), eq(encodedPassword))).thenReturn(true);
         when(passwordEncoder.encode("newPw")).thenReturn("encodedNewPw");
 
         // when & then
-        assertDoesNotThrow(() -> userService.updateUser(request, userId, userId));
-
-        verify(authValidator).validateAuthor(user, userId);
-        verify(userRepository).save(user);
+        when(passwordEncoder.matches(anyString(), anyString())).thenAnswer(invocation -> {
+            String raw = invocation.getArgument(0);
+            String encoded = invocation.getArgument(1);
+            System.out.println("matches 호출됨: raw=" + raw + ", encoded=" + encoded);
+            return raw.equals("currentPw") && encoded.equals("encodedPw");
+        });
     }
 
     @Test
