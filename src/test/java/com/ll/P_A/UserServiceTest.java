@@ -103,16 +103,22 @@ class UserServiceTest {
 
         // mocking
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches(eq(rawPassword), eq(encodedPassword))).thenReturn(true);
-        when(passwordEncoder.encode("newPw")).thenReturn("encodedNewPw");
 
-        // when & then
+        // matches 동작 확인용 로그 추가
         when(passwordEncoder.matches(anyString(), anyString())).thenAnswer(invocation -> {
             String raw = invocation.getArgument(0);
             String encoded = invocation.getArgument(1);
             System.out.println("matches 호출됨: raw=" + raw + ", encoded=" + encoded);
             return raw.equals("currentPw") && encoded.equals("encodedPw");
         });
+
+        when(passwordEncoder.matches(anyString(), anyString())).thenReturn(true);
+
+        // when & then
+        assertDoesNotThrow(() -> userService.updateUser(request, userId, userId));
+
+        verify(authValidator).validateAuthor(user, userId);
+        verify(userRepository).save(user);
     }
 
     @Test
