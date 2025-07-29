@@ -108,7 +108,7 @@ class UserServiceTest {
         when(passwordEncoder.matches(anyString(), anyString())).thenAnswer(invocation -> {
             String raw = invocation.getArgument(0);
             String encoded = invocation.getArgument(1);
-            System.out.println("matches 호출됨: raw=" + raw + ", encoded=" + encoded);
+            System.out.println("matches 호출: raw=" + raw + ", encoded=" + encoded);
             return raw.equals("currentPw") && encoded.equals("encodedPw");
         });
 
