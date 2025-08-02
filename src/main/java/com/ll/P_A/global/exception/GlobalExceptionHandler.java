@@ -42,7 +42,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ExpiredJwtException.class)
     public ResponseEntity<Map<String, String>> handleJwtExpired(ExpiredJwtException ex) {
         Map<String, String> error = new HashMap<>();
-        error.put("error", "다시 로그인해주세요.");
+        error.put("error", " 다시 로그인해주세요. ");
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error); // 401
     }
 
