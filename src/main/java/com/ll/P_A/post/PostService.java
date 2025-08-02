@@ -70,7 +70,7 @@ public class PostService {
     public void like(Long postId, User user) {
         PostEntity post = getEntityById(postId);
         if (post.getAuthor().getId().equals(user.getId())) {
-            throw new IllegalArgumentException("자신의 게시글에는 좋아요를 누를 수 없습니다.");
+            throw new IllegalArgumentException("본인 게시글에는 좋아요를 누를 수 없습니다.");
         }
         post.like(user);
     }
