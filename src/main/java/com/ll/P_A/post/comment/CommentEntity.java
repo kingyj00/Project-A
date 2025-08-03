@@ -43,8 +43,8 @@ public class CommentEntity {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void setContent(String content) {
-        this.content = content;
+    public void updateContent(String newContent) {
+        this.content = newContent;
         this.updatedAt = LocalDateTime.now();
     }
 }

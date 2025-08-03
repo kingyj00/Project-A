@@ -41,7 +41,7 @@ public class PostEntity {
             joinColumns = @JoinColumn(name = "post_id"),
             inverseJoinColumns = @JoinColumn(name = "user_id")
     )
-    private Set<User> likedUsers = new HashSet<>(); // ✅ Builder 사용 시도 null 방지
+    private Set<User> likedUsers = new HashSet<>(); // Builder 사용 시도 null 방지
 
     @PrePersist
     public void prePersist() {
