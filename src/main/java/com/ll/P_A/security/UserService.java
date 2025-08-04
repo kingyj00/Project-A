@@ -3,6 +3,7 @@ package com.ll.P_A.security;
 import com.ll.P_A.global.exception.AuthorizationValidator;
 import com.ll.P_A.security.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,7 +19,7 @@ public class UserService {
     private final MailService mailService;
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenService refreshTokenService;
-    private final AuthorizationValidator authValidator; // 추가
+    private final AuthorizationValidator authValidator;
 
     @Transactional
     public void signup(UserSignupRequest request) {
@@ -43,11 +44,21 @@ public class UserService {
         mailService.sendVerificationEmail(user);
     }
 
+    @Transactional
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new IllegalArgumentException("아이디 또는 비밀번호가 올바르지 않습니다."));
 
+        // 잠금 상태 해제 가능한지 확인
+        user.unlockIfTimePassed();
+
+        if (user.isCurrentlyLocked()) {
+            throw new LockedException(" 반복된 비밀번호 오류로 30분 후 다시 시도해주세요. ");
+        }
+
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            user.increaseLoginFailCount();
+            userRepository.save(user);
             throw new IllegalArgumentException("아이디 또는 비밀번호가 올바르지 않습니다.");
         }
 
@@ -55,10 +66,14 @@ public class UserService {
             throw new IllegalStateException("이메일 인증을 완료해주세요.");
         }
 
+        // 로그인 성공 시 실패 카운트 초기화
+        user.resetLoginFailCount();
+        userRepository.save(user);
+
         String accessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getUsername());
 
-        refreshTokenService.save(user.getUsername(), refreshToken); // Redis에 저장
+        refreshTokenService.save(user.getUsername(), refreshToken);
         return new LoginResponse(accessToken, refreshToken);
     }
 
@@ -77,14 +92,14 @@ public class UserService {
 
         String newAccessToken = jwtTokenProvider.generateAccessToken(username);
         String newRefreshToken = jwtTokenProvider.generateRefreshToken(username);
-        refreshTokenService.save(username, newRefreshToken); // Redis 갱신
+        refreshTokenService.save(username, newRefreshToken);
 
         return new LoginResponse(newAccessToken, newRefreshToken);
     }
 
     @Transactional
     public void logout(String username) {
-        refreshTokenService.delete(username); // Redis에서 삭제
+        refreshTokenService.delete(username);
     }
 
     @Transactional
@@ -121,7 +136,7 @@ public class UserService {
     @Transactional
     public void updateUser(UserUpdateRequest request, Long id, Long currentUserId) {
         User user = findById(id);
-        authValidator.validateAuthor(user, currentUserId); // 권한 확인
+        authValidator.validateAuthor(user, currentUserId);
 
         if (request.getNewPassword() != null && !request.getNewPassword().isBlank()) {
             if (request.getCurrentPassword() == null || !passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
@@ -145,7 +160,7 @@ public class UserService {
     @Transactional
     public void deleteById(Long id, Long currentUserId) {
         User user = findById(id);
-        authValidator.validateAuthor(user, currentUserId); //권한 확인
+        authValidator.validateAuthor(user, currentUserId);
         userRepository.delete(user);
     }
 }
