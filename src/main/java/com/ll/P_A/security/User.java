@@ -39,6 +39,14 @@ public class User {
     private LocalDateTime tokenGeneratedAt;
     private String refreshToken;
 
+    // 로그인 실패 횟수 및 잠금 관련 필드
+    private int loginFailCount;
+
+    @Builder.Default
+    private boolean accountNonLocked = true;
+
+    private LocalDateTime lockTime;
+
     // === 도메인 메서드 ===
 
     public void generateVerificationToken() {
@@ -80,5 +88,31 @@ public class User {
 
     public void removeRefreshToken() {
         this.refreshToken = null;
+    }
+
+    // === 로그인 실패 및 잠금 관련 메서드 ===
+
+    public void increaseLoginFailCount() {
+        this.loginFailCount++;
+        if (this.loginFailCount >= 5) {
+            this.accountNonLocked = false;
+            this.lockTime = LocalDateTime.now();
+        }
+    }
+
+    public void resetLoginFailCount() {
+        this.loginFailCount = 0;
+    }
+
+    public void unlockIfTimePassed() {
+        if (this.lockTime != null && this.lockTime.plusMinutes(30).isBefore(LocalDateTime.now())) {
+            this.accountNonLocked = true;
+            this.loginFailCount = 0;
+            this.lockTime = null;
+        }
+    }
+
+    public boolean isCurrentlyLocked() {
+        return !this.accountNonLocked;
     }
 }
