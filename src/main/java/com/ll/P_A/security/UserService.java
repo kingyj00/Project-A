@@ -53,7 +53,12 @@ public class UserService {
         user.unlockIfTimePassed();
 
         if (user.isCurrentlyLocked()) {
-            throw new LockedException(" 반복된 비밀번호 오류로 30분 후 다시 시도해주세요. ");
+            long remaining = user.getLockRemainingSeconds();
+            long minutes = remaining / 60;
+            long seconds = remaining % 60;
+            throw new LockedException(
+                    String.format("계정이 잠겨 있습니다. %d분 %d초 후 다시 시도해주세요.", minutes, seconds)
+            );
         }
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
