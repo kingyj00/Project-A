@@ -3,6 +3,7 @@ package com.ll.P_A.security;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -47,7 +48,7 @@ public class User {
 
     private LocalDateTime lockTime;
 
-    // === 도메인 메서드 ===
+    // === 이메일 인증 관련 ===
 
     public void generateVerificationToken() {
         this.emailVerificationToken = UUID.randomUUID().toString();
@@ -67,6 +68,8 @@ public class User {
     public boolean isEmailVerified() {
         return enabled;
     }
+
+    // === 사용자 정보 변경 ===
 
     public void updatePassword(String newPassword) {
         this.password = newPassword;
@@ -114,5 +117,11 @@ public class User {
 
     public boolean isCurrentlyLocked() {
         return !this.accountNonLocked;
+    }
+
+    public long getLockRemainingSeconds() {
+        if (this.lockTime == null) return 0;
+        long seconds = Duration.between(LocalDateTime.now(), this.lockTime.plusMinutes(30)).getSeconds();
+        return Math.max(seconds, 0);
     }
 }
