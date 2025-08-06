@@ -33,27 +33,34 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 
-	// Lombok (컴파일/어노테이션)
+	// Lombok
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 
 	// JWT (JJWT)
 	implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
-	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5' // Jackson 기반 파서 사용
+	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
 
 	// DB 관련
-	runtimeOnly 'com.h2database:h2' // 개발용 인메모리 DB (optional)
-	implementation 'mysql:mysql-connector-java:8.0.33' // 실제 운영용 MySQL 드라이버
+	runtimeOnly 'com.h2database:h2' // 개발용 인메모리 DB
+	implementation 'mysql:mysql-connector-java:8.0.33' // 운영용 MySQL 드라이버
 
 	// OpenAPI/Swagger
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0'
 
 	// 개발 및 테스트 도구
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+	//JUnit5 기반 테스트를 위한 설정
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+	//JUnit5 테스트 인식 설정
+	useJUnitPlatform()
 }
 
 tasks.named('test') {
