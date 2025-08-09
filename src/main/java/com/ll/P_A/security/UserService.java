@@ -2,6 +2,7 @@ package com.ll.P_A.security;
 
 import com.ll.P_A.global.exception.AuthorizationValidator;
 import com.ll.P_A.security.jwt.JwtTokenProvider;
+import com.ll.P_A.security.jwt.JwtTokenProvider.RefreshPayload;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -26,7 +27,6 @@ public class UserService {
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
             throw new IllegalArgumentException("이미 사용 중인 아이디입니다.");
         }
-
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
         }
@@ -49,16 +49,14 @@ public class UserService {
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new IllegalArgumentException("아이디 또는 비밀번호가 올바르지 않습니다."));
 
-        // 잠금 상태 해제 가능한지 확인
+        // 잠금 해제 타이밍 확인
         user.unlockIfTimePassed();
 
         if (user.isCurrentlyLocked()) {
             long remaining = user.getLockRemainingSeconds();
             long minutes = remaining / 60;
             long seconds = remaining % 60;
-            throw new LockedException(
-                    String.format("계정이 잠겨 있습니다. %d분 %d초 후 다시 시도해주세요.", minutes, seconds)
-            );
+            throw new LockedException(String.format("계정이 잠겨 있습니다. %d분 %d초 후 다시 시도해주세요.", minutes, seconds));
         }
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
@@ -71,40 +69,78 @@ public class UserService {
             throw new IllegalStateException("이메일 인증을 완료해주세요.");
         }
 
-        // 로그인 성공 시 실패 카운트 초기화
+        // 로그인 성공: 실패 카운트 리셋
         user.resetLoginFailCount();
         userRepository.save(user);
 
+        // Access/Refresh 발급
         String accessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
-        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getUsername());
+        String deviceId = "web"; // 필요 시 클라이언트에서 전달받아 사용
+        RefreshPayload rp = jwtTokenProvider.generateRefreshToken(user.getUsername(), deviceId);
 
-        refreshTokenService.save(user.getUsername(), refreshToken);
-        return new LoginResponse(accessToken, refreshToken);
+        // refresh 해시 기반 ACTIVE 저장 (회전/감지 대비)
+        refreshTokenService.storeActiveToken(
+                rp.token(),
+                user.getId(),
+                rp.jti(),
+                deviceId,
+                rp.expiresAt().toInstant()
+        );
+
+        return new LoginResponse(accessToken, rp.token());
     }
 
     @Transactional
     public LoginResponse reissueToken(String refreshToken) {
+        // 형식/서명 검증 + 타입 확인
         if (!jwtTokenProvider.validateToken(refreshToken)) {
             throw new IllegalArgumentException("유효하지 않는 접근 방식입니다.");
         }
-
-        String username = jwtTokenProvider.getUsernameFromToken(refreshToken);
-        String savedToken = refreshTokenService.get(username);
-
-        if (!refreshToken.equals(savedToken)) {
-            throw new IllegalArgumentException("이미 만료되었거나 일치하지 않는 토큰입니다.");
+        String typ = jwtTokenProvider.getTokenType(refreshToken);
+        if (!"refresh".equalsIgnoreCase(typ)) {
+            throw new IllegalArgumentException("유효하지 않는 접근 방식입니다.");
         }
 
-        String newAccessToken = jwtTokenProvider.generateAccessToken(username);
-        String newRefreshToken = jwtTokenProvider.generateRefreshToken(username);
-        refreshTokenService.save(username, newRefreshToken);
+        // 사용자 로드
+        String username = jwtTokenProvider.getUsernameFromToken(refreshToken);
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자를 찾을 수 없습니다."));
 
-        return new LoginResponse(newAccessToken, newRefreshToken);
+        // 재사용 감지/회전 처리
+        RefreshTokenService.RefreshRecord rec = refreshTokenService.findByToken(refreshToken);
+        if (rec == null || !rec.isActive()) {
+            refreshTokenService.revokeAllForUser(user.getId());
+            throw new IllegalArgumentException("세션이 만료되었거나 보안상 재로그인이 필요합니다.");
+        }
+
+        // 정상 요청 → 기존 토큰 ROTATED 표시
+        refreshTokenService.markRotated(rec.getHash());
+
+        // 새 토큰 발급 (기존 deviceId 재사용)
+        String deviceId = jwtTokenProvider.getDeviceId(refreshToken);
+        if (deviceId == null) deviceId = "web";
+
+        String newAccessToken = jwtTokenProvider.generateAccessToken(username);
+        RefreshPayload newRp = jwtTokenProvider.generateRefreshToken(username, deviceId);
+
+        // 새 refresh ACTIVE 저장
+        refreshTokenService.storeActiveToken(
+                newRp.token(),
+                user.getId(),
+                newRp.jti(),
+                deviceId,
+                newRp.expiresAt().toInstant()
+        );
+
+        return new LoginResponse(newAccessToken, newRp.token());
     }
 
     @Transactional
     public void logout(String username) {
-        refreshTokenService.delete(username);
+        // 기존 시그니처 유지: 전달된 username의 모든 기기 세션 종료
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자를 찾을 수 없습니다."));
+        refreshTokenService.revokeAllForUser(user.getId());
     }
 
     @Transactional
