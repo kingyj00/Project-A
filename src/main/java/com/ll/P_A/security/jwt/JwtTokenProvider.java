@@ -8,95 +8,93 @@ import org.springframework.stereotype.Component;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
+import java.util.UUID;
 
 @Component
 public class JwtTokenProvider {
 
     private final Key secretKey;
-    private final long accessTokenValidity = 1000 * 60 * 60;      // 1시간
-    private final long refreshTokenValidity = 1000L * 60 * 60 * 24 * 7; // 7일
+
+    private final long accessTokenValidityMs  = 1000L * 60 * 15;          // 15분
+    private final long refreshTokenValidityMs = 1000L * 60 * 60 * 24 * 30; // 30일
 
     public JwtTokenProvider(@Value("${jwt.secret}") String secret) {
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    // Access Token 생성 (username 포함)
+    // Access Token 생성 (subject = username)
     public String generateAccessToken(String username) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + accessTokenValidity);
+        Date exp = new Date(now.getTime() + accessTokenValidityMs);
 
         return Jwts.builder()
                 .setSubject(username)
                 .setIssuedAt(now)
-                .setExpiration(expiryDate)
+                .setExpiration(exp)
                 .claim("typ", "access")
                 .signWith(secretKey, SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    // Refresh Token 생성 (subject로 username 포함 - DB 매핑 편리)
-    public String generateRefreshToken(String username) {
+    public RefreshPayload generateRefreshToken(String username, String deviceId) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + refreshTokenValidity);
+        Date exp = new Date(now.getTime() + refreshTokenValidityMs);
+        String jti = UUID.randomUUID().toString();
 
-        return Jwts.builder()
+        String token = Jwts.builder()
                 .setSubject(username)
+                .setId(jti)
                 .setIssuedAt(now)
-                .setExpiration(expiryDate)
+                .setExpiration(exp)
                 .claim("typ", "refresh")
+                .claim("did", deviceId == null ? "" : deviceId)
                 .signWith(secretKey, SignatureAlgorithm.HS256)
                 .compact();
+
+        return new RefreshPayload(token, jti, exp);
     }
 
-    // 사용자 이름 추출 (Access/Refresh 공통)
-    public String getUsernameFromToken(String token) {
-        try {
-            return Jwts.parserBuilder()
-                    .setSigningKey(secretKey)
-                    .build()
-                    .parseClaimsJws(token)
-                    .getBody()
-                    .getSubject(); // Access/Refresh 둘 다 가능
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    // 토큰 유효성 검증 (예외 로깅 포함)
-    public boolean validateToken(String token) {
-        try {
-            Jwts.parserBuilder()
-                    .setSigningKey(secretKey)
-                    .build()
-                    .parseClaimsJws(token);
-            return true;
-        } catch (JwtException | IllegalArgumentException e) {
-            System.out.println("JWT 검증 실패: " + e.getMessage());
-            return false;
-        }
-    }
-
-    // 토큰 만료 시간 확인
-    public Date getExpiration(String token) {
+    private Claims parse(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(secretKey)
                 .build()
                 .parseClaimsJws(token)
-                .getBody()
-                .getExpiration();
+                .getBody();
     }
 
-    // 토큰 타입 확인 (access / refresh)
-    public String getTokenType(String token) {
-        try {
-            return Jwts.parserBuilder()
-                    .setSigningKey(secretKey)
-                    .build()
-                    .parseClaimsJws(token)
-                    .getBody()
-                    .get("typ", String.class); // access or refresh
-        } catch (Exception e) {
-            return null;
-        }
+    // 공통: 사용자 이름 추출
+    public String getUsernameFromToken(String token) {
+        try { return parse(token).getSubject(); }
+        catch (Exception e) { return null; }
     }
+
+    // 공통: jti 추출 (refresh에서 사용)
+    public String getJti(String token) {
+        try { return parse(token).getId(); }
+        catch (Exception e) { return null; }
+    }
+
+    // 공통: 만료시간
+    public Date getExpiration(String token) {
+        return parse(token).getExpiration();
+    }
+
+    // 공통: 토큰 타입 (access/refresh)
+    public String getTokenType(String token) {
+        try { return parse(token).get("typ", String.class); }
+        catch (Exception e) { return null; }
+    }
+
+    public String getDeviceId(String token) {
+        try { return parse(token).get("did", String.class); }
+        catch (Exception e) { return null; }
+    }
+
+    // 유효성 검증
+    public boolean validateToken(String token) {
+        try { parse(token); return true; }
+        catch (JwtException | IllegalArgumentException e) { return false; }
+    }
+
+    public record RefreshPayload(String token, String jti, Date expiresAt) {}
 }
