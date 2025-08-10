@@ -3,9 +3,12 @@ package com.ll.P_A.security;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.UUID;
+import java.util.Base64;
 
 @Entity
 @Getter
@@ -31,16 +34,18 @@ public class User {
     private String email;
 
     @Column(nullable = false)
+    @Builder.Default
     private boolean isAdmin = false;
 
     @Builder.Default
     private boolean enabled = false;
 
-    private String emailVerificationToken;
-    private LocalDateTime tokenGeneratedAt;
-    private String refreshToken;
+    @Column(length = 128)
+    private String emailVerificationTokenHash;      // SHA-256 hex
 
-    // 로그인 실패 횟수 및 잠금 관련 필드
+    private LocalDateTime emailVerificationExpiresAt;
+
+    // 로그인 실패/잠금 관련
     private int loginFailCount;
 
     @Builder.Default
@@ -48,53 +53,42 @@ public class User {
 
     private LocalDateTime lockTime;
 
-    // === 이메일 인증 관련 ===
-
-    public void generateVerificationToken() {
-        this.emailVerificationToken = UUID.randomUUID().toString();
-        this.tokenGeneratedAt = LocalDateTime.now();
+    public String generateVerificationToken() {
+        String raw = randomUrlSafe(32); // 메일로 보낼 원문 토큰
+        this.emailVerificationTokenHash = sha256Hex(raw);
+        this.emailVerificationExpiresAt = LocalDateTime.now().plusHours(24);
+        return raw;
     }
-
     public void verifyEmail() {
         this.enabled = true;
-        this.emailVerificationToken = null;
-        this.tokenGeneratedAt = null;
+        this.emailVerificationTokenHash = null;
+        this.emailVerificationExpiresAt = null;
     }
 
-    public boolean isTokenExpired() {
-        return tokenGeneratedAt != null && tokenGeneratedAt.isBefore(LocalDateTime.now().minusMinutes(30));
+    public boolean isVerificationExpired() {
+        return emailVerificationExpiresAt != null
+                && emailVerificationExpiresAt.isBefore(LocalDateTime.now());
     }
 
     public boolean isEmailVerified() {
         return enabled;
     }
 
-    // === 사용자 정보 변경 ===
-
     public void updatePassword(String newPassword) {
         this.password = newPassword;
     }
 
-    public void changeEmail(String newEmail) {
+    public String changeEmail(String newEmail) {
         this.email = newEmail;
         this.enabled = false;
-        generateVerificationToken();
+        return generateVerificationToken();
     }
 
     public void changeNickname(String newNickname) {
         this.nickname = newNickname;
     }
 
-    public void updateRefreshToken(String refreshToken) {
-        this.refreshToken = refreshToken;
-    }
-
-    public void removeRefreshToken() {
-        this.refreshToken = null;
-    }
-
-    // === 로그인 실패 및 잠금 관련 메서드 ===
-
+ // 로그인 실패시 잠금처리
     public void increaseLoginFailCount() {
         this.loginFailCount++;
         if (this.loginFailCount >= 5) {
@@ -123,5 +117,24 @@ public class User {
         if (this.lockTime == null) return 0;
         long seconds = Duration.between(LocalDateTime.now(), this.lockTime.plusMinutes(30)).getSeconds();
         return Math.max(seconds, 0);
+    }
+
+    private static String randomUrlSafe(int byteLen) {
+        byte[] buf = new byte[byteLen];
+        new SecureRandom().nextBytes(buf);
+        // URL-safe, no padding
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(buf);
+    }
+
+    private static String sha256Hex(String raw) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] digest = md.digest(raw.getBytes());
+            StringBuilder sb = new StringBuilder(digest.length * 2);
+            for (byte b : digest) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 not available", e);
+        }
     }
 }
