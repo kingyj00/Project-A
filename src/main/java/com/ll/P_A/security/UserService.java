@@ -9,6 +9,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.List;
 
 @Service
@@ -21,6 +25,19 @@ public class UserService {
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenService refreshTokenService;
     private final AuthorizationValidator authValidator;
+
+    /* ==========
+       유틸: 이메일 인증 토큰 해시(SHA-256)
+       ========== */
+    private static String sha256Hex(String raw) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] digest = md.digest(raw.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 not available", e);
+        }
+    }
 
     @Transactional
     public void signup(UserSignupRequest request) {
@@ -36,12 +53,15 @@ public class UserService {
                 .password(passwordEncoder.encode(request.getPassword()))
                 .nickname(request.getNickname())
                 .email(request.getEmail())
-                .enabled(false)
+                .enabled(false) // 이메일 인증 완료 전까지 비활성
                 .build();
 
-        user.generateVerificationToken();
+        // 안전한 인증 토큰 생성: DB에는 해시/만료 저장, 반환값은 '원문 토큰'
+        String rawToken = user.generateVerificationToken();
+
         userRepository.save(user);
-        mailService.sendVerificationEmail(user);
+        // 메일 발송은 '원문 토큰'으로 링크 구성
+        mailService.sendVerificationEmail(user, rawToken);
     }
 
     @Transactional
@@ -65,6 +85,7 @@ public class UserService {
             throw new IllegalArgumentException("아이디 또는 비밀번호가 올바르지 않습니다.");
         }
 
+        // 미인증 계정 로그인 차단(이미 구현되어 있던 정책 유지)
         if (!user.isEmailVerified()) {
             throw new IllegalStateException("이메일 인증을 완료해주세요.");
         }
@@ -73,12 +94,11 @@ public class UserService {
         user.resetLoginFailCount();
         userRepository.save(user);
 
-        // Access/Refresh 발급
+        // Access/Refresh 발급 (리프레시 회전/재사용 감지 구조)
         String accessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
         String deviceId = "web"; // 필요 시 클라이언트에서 전달받아 사용
         RefreshPayload rp = jwtTokenProvider.generateRefreshToken(user.getUsername(), deviceId);
 
-        // refresh 해시 기반 ACTIVE 저장 (회전/감지 대비)
         refreshTokenService.storeActiveToken(
                 rp.token(),
                 user.getId(),
@@ -137,22 +157,29 @@ public class UserService {
 
     @Transactional
     public void logout(String username) {
-        // 기존 시그니처 유지: 전달된 username의 모든 기기 세션 종료
+        // 전달된 username의 모든 기기 세션 종료(전체 무효화)
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자를 찾을 수 없습니다."));
         refreshTokenService.revokeAllForUser(user.getId());
     }
 
     @Transactional
-    public void verifyEmail(String token) {
-        User user = userRepository.findByEmailVerificationToken(token)
+    public void verifyEmail(String tokenRaw) {
+        // 수신한 원문 토큰을 해시로 변환해 조회
+        String hash = sha256Hex(tokenRaw);
+
+        // 레포지토리는 '해시'로 조회하도록 변경 필요
+        User user = userRepository.findByEmailVerificationTokenHash(hash)
                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 접근 방식입니다."));
 
-        if (user.isTokenExpired()) {
-            throw new IllegalStateException("유효하지 않는 접근 방식입니다.");
+        // 만료 확인 (24시간 등)
+        if (user.isVerificationExpired()) {
+            throw new IllegalStateException("인증 링크가 만료되었습니다. 인증 메일을 다시 요청해 주세요.");
         }
 
+        // 성공 → 1회용 소진 + 인증 완료
         user.verifyEmail();
+        userRepository.save(user);
     }
 
     public User findById(Long id) {
@@ -187,8 +214,9 @@ public class UserService {
         }
 
         if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
-            user.changeEmail(request.getEmail());
-            mailService.sendVerificationEmail(user);
+            // 이메일 변경 시: 새 토큰 생성(해시/만료 저장) + 원문 토큰으로 메일 발송
+            String raw = user.changeEmail(request.getEmail());
+            mailService.sendVerificationEmail(user, raw);
         }
 
         if (request.getNickname() != null && !request.getNickname().equals(user.getNickname())) {
