@@ -1,38 +1,34 @@
 package com.ll.P_A.security;
 
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 @Service
 @RequiredArgsConstructor
 public class MailService {
 
-    private final JavaMailSender mailSender;
+    // 인증 링크가 연결될 프런트/백엔드의 베이스 URL
+    @Value("${app.verify.base-url:https://example.com}")
+    private String verifyBaseUrl;
 
+    public void sendVerificationEmail(User user, String rawToken) {
+        // 토큰은 URL 인코딩
+        String tokenParam = URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
+        String link = verifyBaseUrl + "/api/auth/verify-email?token=" + tokenParam;
+
+        System.out.printf("[MAIL] to=%s, subject=%s, link=%s%n",
+                user.getEmail(),
+                "이메일 인증을 완료해주세요",
+                link
+        );
+    }
+
+    @Deprecated
     public void sendVerificationEmail(User user) {
-        String to = user.getEmail();
-        String subject = "[Project-A] 이메일 인증을 완료해주세요";
-        String verificationLink = "http://localhost:8080/api/auth/verify-email?token=" + user.getEmailVerificationToken();
-
-        String body = "<h1>이메일 인증</h1>"
-                + "<p>안녕하세요, " + user.getNickname() + "님!</p>"
-                + "<p>아래 링크를 클릭하여 이메일 인증을 완료해주세요.</p>"
-                + "<a href='" + verificationLink + "'>이메일 인증하기</a>";
-
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true);
-            helper.setTo(to);
-            helper.setSubject(subject);
-            helper.setText(body, true);
-            mailSender.send(message);
-        } catch (MessagingException e) {
-            throw new RuntimeException("메일 전송에 실패했습니다.", e);
-        }
+        throw new IllegalStateException("Use sendVerificationEmail(User user, String rawToken) instead.");
     }
 }
