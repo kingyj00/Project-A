@@ -2,9 +2,10 @@ package com.ll.P_A.post.comment;
 
 import com.ll.P_A.security.User;
 import com.ll.P_A.security.UserService;
-import jakarta.servlet.http.HttpSession;
+import com.ll.P_A.security.jwt.CustomUserDetails;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,7 +13,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.net.URI;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/posts/{postId}/comments")
@@ -22,8 +22,8 @@ public class CommentController {
     private final CommentService commentService;
     private final UserService userService;
 
-    private Long getUserId(HttpSession session) {
-        Long userId = (Long) session.getAttribute("userId");
+    private Long getLoginUserId(@AuthenticationPrincipal CustomUserDetails loginUser) {
+        Long userId = (loginUser != null) ? loginUser.getUser().getId() : null;
         if (userId == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
         }
@@ -33,8 +33,8 @@ public class CommentController {
     @PostMapping
     public ResponseEntity<Void> create(@PathVariable Long postId,
                                        @Valid @RequestBody CommentRequestDto dto,
-                                       HttpSession session) {
-        Long userId = getUserId(session);
+                                       @AuthenticationPrincipal CustomUserDetails loginUser) {
+        Long userId = getLoginUserId(loginUser);
         User user = userService.findById(userId);
         Long id = commentService.create(postId, dto, user);
         return ResponseEntity.created(URI.create("/api/posts/" + postId + "/comments/" + id)).build();
@@ -48,8 +48,8 @@ public class CommentController {
     @DeleteMapping("/{commentId}")
     public ResponseEntity<Void> delete(@PathVariable Long postId,
                                        @PathVariable Long commentId,
-                                       HttpSession session) {
-        Long userId = getUserId(session);
+                                       @AuthenticationPrincipal CustomUserDetails loginUser) {
+        Long userId = getLoginUserId(loginUser);
         commentService.deleteByUser(commentId, userId);
         return ResponseEntity.noContent().build();
     }
@@ -58,8 +58,9 @@ public class CommentController {
     public ResponseEntity<Void> update(@PathVariable Long postId,
                                        @PathVariable Long commentId,
                                        @Valid @RequestBody CommentRequestDto dto,
-                                       HttpSession session) {
-        Long userId = getUserId(session);
+                                       @AuthenticationPrincipal CustomUserDetails loginUser) {
+        Long userId = getLoginUserId(loginUser);
+        // 원본 시그니처 유지: updateByUser(commentId, userId, dto.content())
         commentService.updateByUser(commentId, userId, dto.content());
         return ResponseEntity.noContent().build();
     }
