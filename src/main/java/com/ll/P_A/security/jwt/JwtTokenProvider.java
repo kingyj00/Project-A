@@ -14,12 +14,17 @@ import java.util.UUID;
 public class JwtTokenProvider {
 
     private final Key secretKey;
+    private final long accessTokenValidityMs;
+    private final long refreshTokenValidityMs;
 
-    private final long accessTokenValidityMs  = 1000L * 60 * 15;          // 15분
-    private final long refreshTokenValidityMs = 1000L * 60 * 60 * 24 * 30; // 30일
-
-    public JwtTokenProvider(@Value("${jwt.secret}") String secret) {
+    public JwtTokenProvider(
+            @Value("${jwt.secret}") String secret,                           // 비밀키: 기본값 없음(환경/프로파일에서 주입)
+            @Value("${jwt.access-validity-ms:900000}") long accessTtlMs,     // 기본 15분 = 900,000 ms
+            @Value("${jwt.refresh-validity-ms:2592000000}") long refreshTtlMs // 기본 30일 = 2,592,000,000 ms
+    ) {
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        this.accessTokenValidityMs = accessTtlMs;
+        this.refreshTokenValidityMs = refreshTtlMs;
     }
 
     // Access Token 생성 (subject = username)
@@ -36,6 +41,7 @@ public class JwtTokenProvider {
                 .compact();
     }
 
+    // Refresh Token 생성 (subject = username, did = deviceId, jti 포함)
     public RefreshPayload generateRefreshToken(String username, String deviceId) {
         Date now = new Date();
         Date exp = new Date(now.getTime() + refreshTokenValidityMs);
@@ -85,6 +91,7 @@ public class JwtTokenProvider {
         catch (Exception e) { return null; }
     }
 
+    // 공통: 디바이스 ID (refresh에서 사용)
     public String getDeviceId(String token) {
         try { return parse(token).get("did", String.class); }
         catch (Exception e) { return null; }
