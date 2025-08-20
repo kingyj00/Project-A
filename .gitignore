@@ -9,11 +9,13 @@ bin/
 !.gitkeep
 
 # ========================
-#  Spring 관련
+#  Spring 관련 (YAML은 커밋: 비밀 없음)
 # ========================
-application.yml
-application-*.yml
-application.properties
+# application.yml            # <— 커밋 (무시하지 않음)
+# application-*.yml         # <— 커밋 (무시하지 않음)
+application-local.yml       # <— 로컬 전용 시크릿은 무시
+application-*.secrets.yml   # <— 시크릿 포함 가능성 파일 무시
+application.properties      # (사용 시 비밀 없는 템플릿만 커밋 권장)
 application-*.properties
 
 # ========================
@@ -24,6 +26,7 @@ logs/
 jwt-secret.txt
 secret.key
 .env
+*.env
 
 # ========================
 #  IDE 관련
@@ -55,7 +58,7 @@ secret.key
 /.nb-gradle/
 
 # ========================
-# ✅ 테스트 결과물
+# 테스트 결과물
 # ========================
 /test-output/
 !**/src/main/**/out/
