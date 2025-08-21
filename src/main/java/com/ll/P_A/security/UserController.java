@@ -3,6 +3,7 @@ package com.ll.P_A.security;
 import com.ll.P_A.security.jwt.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,12 +33,9 @@ public class UserController {
         return userService.login(request);
     }
 
+    @PreAuthorize("isAuthenticated()")
     @PostMapping("/logout")
     public String logout(@AuthenticationPrincipal CustomUserDetails loginUser) {
-        if (loginUser == null) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
-        }
-
         userService.logout(loginUser.getUsername());
         return "로그아웃 완료되었습니다.";
     }
@@ -47,65 +45,41 @@ public class UserController {
         return userService.reissueToken(refreshToken);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/admin/users/{id}")
-    public String deleteUser(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails loginUser) {
-        if (loginUser == null) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
-        }
-
+    public String deleteUser(@PathVariable Long id,
+                             @AuthenticationPrincipal CustomUserDetails loginUser) {
         User admin = loginUser.getUser();
-        if (!admin.isAdmin()) {
-            throw new IllegalArgumentException("관리자만 접근할 수 있습니다.");
-        }
-
-        // 관리자 권한으로 삭제하므로 currentUserId도 관리자 ID로 넘김
-        userService.deleteById(id, admin.getId());
+        userService.deleteById(id, admin.getId()); // 관리자 ID로 감사/검증
         return "사용자 삭제 완료";
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/admin/users")
-    public List<UserSummary> listUsers(@AuthenticationPrincipal CustomUserDetails loginUser) {
-        if (loginUser == null) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
-        }
-
-        User admin = loginUser.getUser();
-        if (!admin.isAdmin()) {
-            throw new IllegalArgumentException("관리자만 접근할 수 있습니다.");
-        }
-
+    public List<UserSummary> listUsers() {
         return userService.findAllUsers();
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/me")
     public UserProfileResponse getMyInfo(@AuthenticationPrincipal CustomUserDetails loginUser) {
-        if (loginUser == null) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
-        }
-
         return userService.getMyProfile(loginUser.getUser().getId());
     }
 
+    @PreAuthorize("isAuthenticated()")
     @PutMapping("/me")
     public String updateMyInfo(@RequestBody UserUpdateRequest request,
                                @AuthenticationPrincipal CustomUserDetails loginUser) {
-        if (loginUser == null) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
-        }
-
         Long currentUserId = loginUser.getUser().getId();
-        userService.updateUser(request, currentUserId, currentUserId); // 그인 ID를 검증용으로 전달
+        userService.updateUser(request, currentUserId, currentUserId); // 자기자신 검증
         return "회원정보 수정 완료";
     }
 
+    @PreAuthorize("isAuthenticated()")
     @DeleteMapping("/me")
     public String deleteMyAccount(@AuthenticationPrincipal CustomUserDetails loginUser) {
-        if (loginUser == null) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
-        }
-
         Long currentUserId = loginUser.getUser().getId();
-        userService.deleteById(currentUserId, currentUserId); //로그인 ID를 검증용으로 전달
+        userService.deleteById(currentUserId, currentUserId); // 자기자신 검증
         return "회원 탈퇴가 완료되었습니다.";
     }
 }
