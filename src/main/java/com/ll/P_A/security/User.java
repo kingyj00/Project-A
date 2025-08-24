@@ -68,7 +68,6 @@ public class User {
     }
 
     // --- 이메일 인증 ---
-
     public String generateVerificationToken() {
         String raw = randomUrlSafe(32); // 메일로 보낼 원문 토큰
         this.emailVerificationTokenHash = sha256Hex(raw);
@@ -106,7 +105,6 @@ public class User {
     }
 
     // --- 계정 잠금 ---
-
     // 로그인 실패시 잠금처리
     public void increaseLoginFailCount() {
         this.loginFailCount++;
@@ -139,7 +137,6 @@ public class User {
     }
 
     // --- 유틸 ---
-
     private static String randomUrlSafe(int byteLen) {
         byte[] buf = new byte[byteLen];
         new SecureRandom().nextBytes(buf);
