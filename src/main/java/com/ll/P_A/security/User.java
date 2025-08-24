@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 import java.util.Base64;
 
 @Entity
+@Table(name = "users")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -33,6 +34,7 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
+    //관리자 여부 확인
     @Builder.Default
     private boolean isAdmin = false;
 
@@ -54,20 +56,16 @@ public class User {
 
     // --- 권한/상태 도메인 메서드 ---
 
-    /** 명시적 접근자: 보안 어노테이션/권한 매핑에서 사용 */
+    // 보안 어노테이션/권한 매핑에서 사용
     public boolean isAdmin() {
         return this.isAdmin;
     }
 
-    /** 운영 편의를 위한 도메인 메서드(필요 시 사용) */
-    public void grantAdmin() {
-        this.isAdmin = true;
-    }
-    public void revokeAdmin() {
-        this.isAdmin = false;
-    }
+    public void grantAdmin() { this.isAdmin = true; }
+    public void revokeAdmin() { this.isAdmin = false; }
 
     // --- 이메일 인증 ---
+
     public String generateVerificationToken() {
         String raw = randomUrlSafe(32); // 메일로 보낼 원문 토큰
         this.emailVerificationTokenHash = sha256Hex(raw);
@@ -105,6 +103,7 @@ public class User {
     }
 
     // --- 계정 잠금 ---
+
     // 로그인 실패시 잠금처리
     public void increaseLoginFailCount() {
         this.loginFailCount++;
