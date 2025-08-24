@@ -22,8 +22,6 @@ spring:
   sql:
     init:
       mode: never
-
-  # 테스트 프로파일에서 메일 환경값 직접 지정해 placeholder 해소
   mail:
     host: localhost
     port: 2525
@@ -32,12 +30,6 @@ spring:
     properties:
       mail.smtp.auth: false
       mail.smtp.starttls.enable: false
-
-  data:
-    redis:
-      host: localhost
-      port: 6379
-      password:
 
 server:
   port: 0
@@ -62,3 +54,5 @@ logging:
     root: warn
     org.springframework.web: info
     org.hibernate.SQL: debug
+    org.springframework.security: debug
+    com.ll.P_A: debug
