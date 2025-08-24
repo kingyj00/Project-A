@@ -33,7 +33,6 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
-    @Column(nullable = false)
     @Builder.Default
     private boolean isAdmin = false;
 
@@ -41,7 +40,7 @@ public class User {
     private boolean enabled = false;
 
     @Column(length = 128)
-    private String emailVerificationTokenHash;      // SHA-256 hex
+    private String emailVerificationTokenHash; // SHA-256 hex
 
     private LocalDateTime emailVerificationExpiresAt;
 
@@ -53,12 +52,30 @@ public class User {
 
     private LocalDateTime lockTime;
 
+    // --- 권한/상태 도메인 메서드 ---
+
+    /** 명시적 접근자: 보안 어노테이션/권한 매핑에서 사용 */
+    public boolean isAdmin() {
+        return this.isAdmin;
+    }
+
+    /** 운영 편의를 위한 도메인 메서드(필요 시 사용) */
+    public void grantAdmin() {
+        this.isAdmin = true;
+    }
+    public void revokeAdmin() {
+        this.isAdmin = false;
+    }
+
+    // --- 이메일 인증 ---
+
     public String generateVerificationToken() {
         String raw = randomUrlSafe(32); // 메일로 보낼 원문 토큰
         this.emailVerificationTokenHash = sha256Hex(raw);
         this.emailVerificationExpiresAt = LocalDateTime.now().plusHours(24);
         return raw;
     }
+
     public void verifyEmail() {
         this.enabled = true;
         this.emailVerificationTokenHash = null;
@@ -88,7 +105,9 @@ public class User {
         this.nickname = newNickname;
     }
 
- // 로그인 실패시 잠금처리
+    // --- 계정 잠금 ---
+
+    // 로그인 실패시 잠금처리
     public void increaseLoginFailCount() {
         this.loginFailCount++;
         if (this.loginFailCount >= 5) {
@@ -118,6 +137,8 @@ public class User {
         long seconds = Duration.between(LocalDateTime.now(), this.lockTime.plusMinutes(30)).getSeconds();
         return Math.max(seconds, 0);
     }
+
+    // --- 유틸 ---
 
     private static String randomUrlSafe(int byteLen) {
         byte[] buf = new byte[byteLen];
