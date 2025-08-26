@@ -42,7 +42,7 @@ public class RefreshTokenService {
             throw new IllegalStateException("SHA-256 not available", e);
         }
     }
-    
+
     public void storeActiveToken(String refreshToken,
                                  Long userId,
                                  String jti,
