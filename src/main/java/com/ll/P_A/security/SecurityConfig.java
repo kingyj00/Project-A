@@ -28,7 +28,7 @@ public class SecurityConfig {
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
-        // 반환 타입을 BCryptPasswordEncoder로 노출 (UserService가 이 타입을 직접 의존)
+        // UserService가 이 타입을 직접 의존
         return new BCryptPasswordEncoder();
     }
 
@@ -49,18 +49,26 @@ public class SecurityConfig {
         boolean isDev = isDevProfileActive();
 
         http
+                // 세션 전면 비사용 + 폼로그인/HTTP Basic 비활성(Stateless 보장)
                 .csrf(csrf -> csrf.disable())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .formLogin(fl -> fl.disable())
+                .httpBasic(hb -> hb.disable())
+
+                // 엔드포인트 접근 정책
                 .authorizeHttpRequests(auth -> {
-                    auth.requestMatchers("/api/auth/**").permitAll();
-                    auth.requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll();
+                    auth.requestMatchers("/api/auth/**").permitAll();            // 로그인/회원가입/재발급 등
+                    auth.requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll(); // 게시글 조회는 공개
 
                     if (isDev) {
+                        // 개발 프로파일에서만 Swagger 허용
                         auth.requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll();
                     }
 
                     auth.anyRequest().authenticated();
                 })
+
+                // JWT 인증 필터 삽입
                 .addFilterBefore(
                         new JwtAuthenticationFilter(jwtTokenProvider, customUserDetailsService),
                         UsernamePasswordAuthenticationFilter.class
