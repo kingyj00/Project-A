@@ -1,10 +1,12 @@
 package com.ll.P_A.security;
 
 import com.ll.P_A.security.jwt.CustomUserDetails;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,8 +18,19 @@ public class UserController {
 
     private final UserService userService;
 
+    /* ---------- 공통 유틸 ---------- */
+
+    /** "Authorization: Bearer xxx" 에서 토큰만 추출 */
+    private String extractBearer(String header) {
+        if (!StringUtils.hasText(header)) return null;
+        if (header.startsWith("Bearer ")) return header.substring(7);
+        return header;
+    }
+
+    /* ---------- API ---------- */
+
     @PostMapping("/signup")
-    public String signup(@RequestBody UserSignupRequest request) {
+    public String signup(@Valid @RequestBody UserSignupRequest request) {
         userService.signup(request);
         return "가입 완료! 이메일을 확인해주세요.";
     }
@@ -29,19 +42,22 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public LoginResponse login(@RequestBody LoginRequest request) {
+    public LoginResponse login(@Valid @RequestBody LoginRequest request) {
         return userService.login(request);
     }
 
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/logout")
     public String logout(@AuthenticationPrincipal CustomUserDetails loginUser) {
+        // 사용자명 대신 ID로 감사/추적 일관화
         userService.logout(loginUser.getUsername());
         return "로그아웃 완료되었습니다.";
     }
 
+    // refresh 토큰은 접근 토큰 없이도 재발급 가능하게 두는 것이 일반적 → PreAuthorize 없음
     @PostMapping("/reissue")
-    public LoginResponse reissue(@RequestHeader(HttpHeaders.AUTHORIZATION) String refreshToken) {
+    public LoginResponse reissue(@RequestHeader(HttpHeaders.AUTHORIZATION) String refreshHeader) {
+        String refreshToken = extractBearer(refreshHeader);
         return userService.reissueToken(refreshToken);
     }
 
@@ -68,7 +84,7 @@ public class UserController {
 
     @PreAuthorize("isAuthenticated()")
     @PutMapping("/me")
-    public String updateMyInfo(@RequestBody UserUpdateRequest request,
+    public String updateMyInfo(@Valid @RequestBody UserUpdateRequest request,
                                @AuthenticationPrincipal CustomUserDetails loginUser) {
         Long currentUserId = loginUser.getUser().getId();
         userService.updateUser(request, currentUserId, currentUserId); // 자기자신 검증

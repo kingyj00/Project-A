@@ -5,9 +5,9 @@ import com.ll.P_A.security.UserService;
 import com.ll.P_A.security.jwt.CustomUserDetails;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -23,7 +23,10 @@ public class PostController {
     private final PostService postService;
     private final UserService userService;
 
-    private Long getLoginUserId(@AuthenticationPrincipal CustomUserDetails loginUser) {
+    /* ---------- 헬퍼: 로그인 사용자 식별/조회 ---------- */
+
+    /** 로그인 필수: ID 반환 (없으면 401) */
+    private Long requireLoginUserId(CustomUserDetails loginUser) {
         Long userId = (loginUser != null) ? loginUser.getUser().getId() : null;
         if (userId == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
@@ -31,12 +34,24 @@ public class PostController {
         return userId;
     }
 
+    /** 로그인 필수: 엔티티 반환 (없으면 401) */
+    private User requireLoginUser(CustomUserDetails loginUser) {
+        return userService.findById(requireLoginUserId(loginUser));
+    }
+
+    /** 로그인 선택: 엔티티 or null */
+    private User optionalLoginUser(CustomUserDetails loginUser) {
+        Long userId = (loginUser != null) ? loginUser.getUser().getId() : null;
+        return (userId != null) ? userService.findById(userId) : null;
+    }
+
+    /* ------------------- API ------------------- */
+
     @GetMapping
     public ResponseEntity<List<PostResponseDto>> getAllPosts(
             @AuthenticationPrincipal CustomUserDetails loginUser
     ) {
-        Long userId = (loginUser != null) ? loginUser.getUser().getId() : null;
-        User loginUserEntity = (userId != null) ? userService.findById(userId) : null;
+        User loginUserEntity = optionalLoginUser(loginUser);
         List<PostResponseDto> posts = postService.getAll(loginUserEntity);
         return ResponseEntity.ok(posts);
     }
@@ -46,8 +61,7 @@ public class PostController {
             @PathVariable Long id,
             @AuthenticationPrincipal CustomUserDetails loginUser
     ) {
-        Long userId = (loginUser != null) ? loginUser.getUser().getId() : null;
-        User loginUserEntity = (userId != null) ? userService.findById(userId) : null;
+        User loginUserEntity = optionalLoginUser(loginUser);
         PostResponseDto post = postService.getById(id, loginUserEntity);
         return ResponseEntity.ok(post);
     }
@@ -57,9 +71,7 @@ public class PostController {
             @Valid @RequestBody PostRequestDto dto,
             @AuthenticationPrincipal CustomUserDetails loginUser
     ) {
-        Long userId = getLoginUserId(loginUser);
-        User user = userService.findById(userId);
-
+        User user = requireLoginUser(loginUser);
         Long id = postService.create(dto, user);
         return ResponseEntity.created(URI.create("/api/posts/" + id)).build();
     }
@@ -70,7 +82,7 @@ public class PostController {
             @Valid @RequestBody PostRequestDto dto,
             @AuthenticationPrincipal CustomUserDetails loginUser
     ) {
-        Long userId = getLoginUserId(loginUser);
+        Long userId = requireLoginUserId(loginUser);
         // 원본 시그니처 유지: updateByUser(id, dto, userId)
         postService.updateByUser(id, dto, userId);
         return ResponseEntity.ok().build();
@@ -81,7 +93,7 @@ public class PostController {
             @PathVariable Long id,
             @AuthenticationPrincipal CustomUserDetails loginUser
     ) {
-        Long userId = getLoginUserId(loginUser);
+        Long userId = requireLoginUserId(loginUser);
         // 원본 시그니처 유지: deleteByUser(id, userId)
         postService.deleteByUser(id, userId);
         return ResponseEntity.noContent().build();
@@ -93,9 +105,7 @@ public class PostController {
             @PathVariable Long id,
             @AuthenticationPrincipal CustomUserDetails loginUser
     ) {
-        Long userId = getLoginUserId(loginUser);
-        User user = userService.findById(userId);
-
+        User user = requireLoginUser(loginUser);
         // 원본 시그니처 유지: like(id, user)
         postService.like(id, user);
         return ResponseEntity.ok().build();
@@ -107,9 +117,7 @@ public class PostController {
             @PathVariable Long id,
             @AuthenticationPrincipal CustomUserDetails loginUser
     ) {
-        Long userId = getLoginUserId(loginUser);
-        User user = userService.findById(userId);
-
+        User user = requireLoginUser(loginUser);
         // 원본 시그니처 유지: unlike(id, user)
         postService.unlike(id, user);
         return ResponseEntity.ok().build();
@@ -121,14 +129,8 @@ public class PostController {
             @PathVariable Long id,
             @AuthenticationPrincipal CustomUserDetails loginUser
     ) {
-        Long userId = (loginUser != null) ? loginUser.getUser().getId() : null;
-        if (userId == null) {
-            return ResponseEntity.ok(Map.of("liked", false));
-        }
-        User user = userService.findById(userId);
-
-        // 원본 시그니처 유지: isLikedByUser(id, user)
-        boolean liked = postService.isLikedByUser(id, user);
+        User user = optionalLoginUser(loginUser);
+        boolean liked = (user != null) && postService.isLikedByUser(id, user);
         return ResponseEntity.ok(Map.of("liked", liked));
     }
 }
