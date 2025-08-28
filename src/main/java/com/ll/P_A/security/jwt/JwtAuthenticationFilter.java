@@ -1,5 +1,6 @@
 package com.ll.P_A.security.jwt;
 
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,27 +30,32 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = resolveToken(request);
 
-        if (StringUtils.hasText(token)) {
+        // 이미 인증된 경우 재인증 방지
+        if (StringUtils.hasText(token)
+                && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
                 if (jwtTokenProvider.validateToken(token)) {
                     String username = jwtTokenProvider.getUsernameFromToken(token);
                     UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
                     UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails, null, userDetails.getAuthorities());
 
                     authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
-            } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            } catch (ExpiredJwtException e) {
+                SecurityContextHolder.clearContext();
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.setContentType("application/json");
-                response.getWriter().write("{\"error\": \"AccessToken Expired\"}");
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"error\":\"AccessToken Expired\"}");
                 return;
             } catch (Exception e) {
+                SecurityContextHolder.clearContext();
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.setContentType("application/json");
-                response.getWriter().write("{\"error\": \"Invalid Token\"}");
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"error\":\"Invalid Token\"}");
                 return;
             }
         }
