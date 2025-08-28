@@ -6,7 +6,6 @@ import com.ll.P_A.post.PostRepository;
 import com.ll.P_A.post.PostRequestDto;
 import com.ll.P_A.post.PostService;
 import com.ll.P_A.security.User;
-import com.ll.P_A.security.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -20,16 +19,15 @@ import static org.mockito.Mockito.*;
 class PostServiceTest {
 
     private PostRepository postRepository;
-    private UserRepository userRepository;
     private AuthorizationValidator authValidator;
     private PostService postService;
 
     @BeforeEach
     void setUp() {
         postRepository = mock(PostRepository.class);
-        userRepository = mock(UserRepository.class);
         authValidator = mock(AuthorizationValidator.class);
-        postService = new PostService(postRepository, userRepository, authValidator);
+        // 변경된 생성자: PostService(PostRepository, AuthorizationValidator)
+        postService = new PostService(postRepository, authValidator);
     }
 
     @Test
@@ -143,7 +141,7 @@ class PostServiceTest {
         postService.updateByUser(1L, dto, user.getId());
 
         // then
-        verify(authValidator).validateAuthor(post.getAuthor(), user.getId()); //권한 검사 호출 여부 검증
+        verify(authValidator).validateAuthor(post.getAuthor(), user.getId()); // 권한 검사 호출 여부 검증
         assertThat(post.getTitle()).isEqualTo("new title");
         assertThat(post.getContent()).isEqualTo("new content");
     }
