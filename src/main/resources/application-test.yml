@@ -1,58 +1,9 @@
 spring:
-  config:
-    activate:
-      on-profile: test
-  main:
-    allow-bean-definition-overriding: true
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
-      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
   datasource:
-    driver-class-name: org.h2.Driver
-    url: jdbc:h2:mem:project_a_test;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    url: jdbc:h2:mem:testdb;MODE=MySQL
     username: sa
     password:
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
-    properties:
-      hibernate:
-        format_sql: true
-  sql:
-    init:
-      mode: never
-  mail:
-    host: localhost
-    port: 2525
-    username:
-    password:
-    properties:
-      mail.smtp.auth: false
-      mail.smtp.starttls.enable: false
-
-server:
-  port: 0
-
-springdoc:
-  api-docs:
-    enabled: false
-  swagger-ui:
-    enabled: false
-
 jwt:
-  secret: test-test-test-test-test-test-test-test-32b
-  access-validity-ms: 60000
-  refresh-validity-ms: 300000
-
-app:
-  verify:
-    base-url: http://localhost
-
-logging:
-  level:
-    root: warn
-    org.springframework.web: info
-    org.hibernate.SQL: debug
-    org.springframework.security: debug
-    com.ll.P_A: debug
+  secret: test-secret
+  access-token-validity-ms: 900000
+  refresh-token-validity-ms: 1209600000

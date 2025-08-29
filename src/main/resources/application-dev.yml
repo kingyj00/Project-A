@@ -1,24 +1,15 @@
 spring:
-  config:
-    activate:
-      on-profile: dev
-
-# 개발에서만 문서 활성화
-springdoc:
-  api-docs:
-    enabled: true
-  swagger-ui:
-    enabled: true
-
-# 로컬 개발 편의 로깅(원하면 조절)
-logging:
-  level:
-    org.hibernate.SQL: debug
-    org.hibernate.type.descriptor.sql.BasicBinder: trace
-
-# 로컬 개발 기본값(원하면 주석 해제해서 직접 값 지정 가능)
-# server:
-#   port: 8080
-# app:
-#   verify:
-#     base-url: http://localhost:8080
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-validity-ms: 900000
+  refresh-token-validity-ms: 1209600000
+mail:
+  username: ${MAIL_USERNAME}
+  password: ${MAIL_PASSWORD}
+redis:
+  host: ${REDIS_HOST}
+  port: ${REDIS_PORT}

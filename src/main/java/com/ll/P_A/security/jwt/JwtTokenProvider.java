@@ -2,11 +2,13 @@ package com.ll.P_A.security.jwt;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.WeakKeyException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
+import java.util.Base64;
 import java.util.Date;
 import java.util.UUID;
 
@@ -18,16 +20,43 @@ public class JwtTokenProvider {
     private final long refreshTokenValidityMs;
 
     public JwtTokenProvider(
-            @Value("${jwt.secret}") String secret,                           // 비밀키: 기본값 없음(환경/프로파일에서 주입)
-            @Value("${jwt.access-validity-ms:900000}") long accessTtlMs,     // 기본 15분 = 900,000 ms
-            @Value("${jwt.refresh-validity-ms:2592000000}") long refreshTtlMs // 기본 30일 = 2,592,000,000 ms
+            @Value("${jwt.secret:}") String secretRaw,
+            @Value("${jwt.secret-base64:}") String secretBase64,
+            @Value("${jwt.access-token-validity-ms:900000}") long accessTtlMs,
+            @Value("${jwt.refresh-token-validity-ms:2592000000}") long refreshTtlMs
     ) {
-        this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        byte[] keyBytes;
+
+        if (!isBlank(secretBase64)) {
+            // Base64 우선 사용
+            try {
+                keyBytes = Base64.getDecoder().decode(secretBase64);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalStateException("jwt.secret-base64 값이 올바른 Base64가 아닙니다.", e);
+            }
+        } else if (!isBlank(secretRaw)) {
+            keyBytes = secretRaw.getBytes(StandardCharsets.UTF_8);
+        } else {
+            throw new IllegalStateException("JWT 시크릿이 설정되지 않았습니다. jwt.secret 또는 jwt.secret-base64 를 주입하세요.");
+        }
+
+        try {
+            this.secretKey = Keys.hmacShaKeyFor(keyBytes); // HS256 최소 256bit(32바이트) 필요
+        } catch (WeakKeyException e) {
+            throw new IllegalStateException("JWT 시크릿 키가 너무 짧습니다. HS256 기준 최소 32바이트(256bit) 이상이어야 합니다.", e);
+        }
+
         this.accessTokenValidityMs = accessTtlMs;
         this.refreshTokenValidityMs = refreshTtlMs;
     }
 
-    // Access Token 생성 (subject = username)
+    private boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
+    }
+
+    /* ===================== 토큰 생성 ===================== */
+
+    /** Access Token 생성 (subject = username) */
     public String generateAccessToken(String username) {
         Date now = new Date();
         Date exp = new Date(now.getTime() + accessTokenValidityMs);
@@ -41,7 +70,7 @@ public class JwtTokenProvider {
                 .compact();
     }
 
-    // Refresh Token 생성 (subject = username, did = deviceId, jti 포함)
+    /** Refresh Token 생성 (subject = username, did = deviceId, jti 포함) */
     public RefreshPayload generateRefreshToken(String username, String deviceId) {
         Date now = new Date();
         Date exp = new Date(now.getTime() + refreshTokenValidityMs);
@@ -60,6 +89,8 @@ public class JwtTokenProvider {
         return new RefreshPayload(token, jti, exp);
     }
 
+    /* ===================== 파싱/검증 ===================== */
+
     private Claims parse(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(secretKey)
@@ -68,40 +99,47 @@ public class JwtTokenProvider {
                 .getBody();
     }
 
-    // 공통: 사용자 이름 추출
+    /** 사용자명 추출 */
     public String getUsernameFromToken(String token) {
         try { return parse(token).getSubject(); }
         catch (Exception e) { return null; }
     }
 
-    // 공통: jti 추출 (refresh에서 사용)
+    /** jti 추출 (refresh 전용) */
     public String getJti(String token) {
         try { return parse(token).getId(); }
         catch (Exception e) { return null; }
     }
 
-    // 공통: 만료시간
+    /** 만료시간 추출 */
     public Date getExpiration(String token) {
-        return parse(token).getExpiration();
+        try { return parse(token).getExpiration(); }
+        catch (Exception e) { return null; }
     }
 
-    // 공통: 토큰 타입 (access/refresh)
+    /** 토큰 타입(access/refresh) */
     public String getTokenType(String token) {
         try { return parse(token).get("typ", String.class); }
         catch (Exception e) { return null; }
     }
 
-    // 공통: 디바이스 ID (refresh에서 사용)
+    /** 디바이스 ID (refresh) */
     public String getDeviceId(String token) {
         try { return parse(token).get("did", String.class); }
         catch (Exception e) { return null; }
     }
 
-    // 유효성 검증
+    /** 서명/만료 포함 유효성 검증 */
     public boolean validateToken(String token) {
-        try { parse(token); return true; }
-        catch (JwtException | IllegalArgumentException e) { return false; }
+        try {
+            parse(token);
+            return true;
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
     }
+
+    /* ===================== VO ===================== */
 
     public record RefreshPayload(String token, String jti, Date expiresAt) {}
 }

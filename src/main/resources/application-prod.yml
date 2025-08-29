@@ -1,18 +1,21 @@
 spring:
-  config:
-    activate:
-      on-profile: prod
-  jpa:
-    hibernate:
-      ddl-auto: none
-
-springdoc:
-  api-docs:
-    enabled: false
-  swagger-ui:
-    enabled: false
-
-logging:
-  level:
-    org.hibernate.SQL: info
-    org.hibernate.type.descriptor.sql.BasicBinder: warn
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-validity-ms: ${ACCESS_TTL_MS:900000}
+  refresh-token-validity-ms: ${REFRESH_TTL_MS:1209600000}
+mail:
+  username: ${MAIL_USERNAME}
+  password: ${MAIL_PASSWORD}
+redis:
+  host: ${REDIS_HOST}
+  port: ${REDIS_PORT}
+  password: ${REDIS_PASSWORD:}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

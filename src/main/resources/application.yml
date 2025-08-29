@@ -1,53 +1,15 @@
-server:
-  port: ${SERVER_PORT:8080}
-
 spring:
   datasource:
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
-    driver-class-name: com.mysql.cj.jdbc.Driver
-
-  jpa:
-    hibernate:
-      ddl-auto: ${JPA_DDL_AUTO:update}
-    properties:
-      hibernate:
-        format_sql: true
-        # show_sql 는 로깅으로 대체 권장. 필요 시 환경변수로 제어 가능
-        # show_sql: true
-
-  mail:
-    host: ${MAIL_HOST}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
-    properties:
-      mail.smtp.auth: true
-      mail.smtp.starttls.enable: true
-
-  redis:
-    host: ${REDIS_HOST}
-    port: ${REDIS_PORT:6379}
-    password: ${REDIS_PASSWORD:}
-
-  thymeleaf:
-    enabled: false
-
+    url: ${DB_URL:jdbc:h2:mem:test}
+    username: ${DB_USERNAME:sa}
+    password: ${DB_PASSWORD:}
 jwt:
-  # 필수: 기본값 없음 (환경/Secret Manager에서 주입)
-  secret: ${JWT_SECRET}
-  # 선택: 기본값 15분/30일(환경변수로 재정의 가능)
-  access-validity-ms: ${JWT_ACCESS_TTL_MS:900000}
-  refresh-validity-ms: ${JWT_REFRESH_TTL_MS:2592000000}
-
-# 메일 인증 링크 베이스 URL (MailService에서 사용)
-app:
-  verify:
-    base-url: ${APP_VERIFY_BASE_URL}
-
-logging:
-  level:
-    # 운영 기본은 info/warn, 필요 시 환경변수로 조절
-    org.hibernate.SQL: ${HIBERNATE_SQL_LOG:info}
-    org.hibernate.type.descriptor.sql.BasicBinder: ${HIBERNATE_BINDER_LOG:warn}
+  secret: ${JWT_SECRET:dev-secret-only-for-local}
+  access-token-validity-ms: 900000
+  refresh-token-validity-ms: 1209600000
+mail:
+  username: ${MAIL_USERNAME:}
+  password: ${MAIL_PASSWORD:}
+redis:
+  host: ${REDIS_HOST:localhost}
+  port: ${REDIS_PORT:6379}
