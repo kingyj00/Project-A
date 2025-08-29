@@ -13,9 +13,19 @@ bin/
 # ========================
 # application.yml            # <— 커밋 (무시하지 않음)
 # application-*.yml         # <— 커밋 (무시하지 않음)
-application-local.yml       # <— 로컬 전용 시크릿은 무시
-application-*.secrets.yml   # <— 시크릿 포함 가능성 파일 무시
-application.properties      # (사용 시 비밀 없는 템플릿만 커밋 권장)
+
+# 로컬/운영 시크릿성 파일 차단
+application-local.yml                 # 로컬 전용 시크릿
+application-*.secrets.yml             # 시크릿 포함 가능성
+application-prod.yml                  # 운영 값 실파일 금지
+application-production.yml
+application-stage.yml
+application-staging.yml
+application-dev.local.yml
+application-*.override.yml
+
+# properties 계열
+application.properties                # (비밀 없는 템플릿만 커밋 권장)
 application-*.properties
 
 # ========================
@@ -25,8 +35,45 @@ application-*.properties
 logs/
 jwt-secret.txt
 secret.key
+secrets/
 .env
 *.env
+.env.*
+*.hprof
+hs_err_pid*
+replay_pid*
+
+# ========================
+#  인증서/키/자격증명
+# ========================
+*.jks
+*.p12
+*.pfx
+*.pem
+*.crt
+*.cer
+*.csr
+*.der
+*.key
+
+# SSH
+id_rsa
+id_dsa
+id_ed25519
+known_hosts
+
+# ========================
+#  Docker / Compose / K8s / Helm
+# ========================
+.docker/
+docker-compose.override.yml
+# 쿠버네티스/헬름 시크릿 페턴 차단 (values-secrets.yaml 등)
+**/*secret*.yml
+**/*secret*.yaml
+helm/**/values-secrets.yaml
+k8s/**/secrets/
+k8s/**/secret*.yaml
+k8s/**/secret*.yml
 
 # ========================
 #  IDE 관련
@@ -65,3 +112,9 @@ secret.key
 /build/
 !**/src/main/**/build/
 /target/
+
+# ========================
+# OS 잡파일
+# ========================
+.DS_Store
+Thumbs.db
