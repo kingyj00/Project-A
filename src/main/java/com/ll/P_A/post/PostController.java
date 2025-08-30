@@ -5,6 +5,10 @@ import com.ll.P_A.security.UserService;
 import com.ll.P_A.security.jwt.CustomUserDetails;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -12,7 +16,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.net.URI;
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -23,7 +26,7 @@ public class PostController {
     private final PostService postService;
     private final UserService userService;
 
-    /* ---------- 헬퍼: 로그인 사용자 식별/조회 ---------- */
+    //로그인 사용자 식별/조회
 
     /** 로그인 필수: ID 반환 (없으면 401) */
     private Long requireLoginUserId(CustomUserDetails loginUser) {
@@ -45,14 +48,15 @@ public class PostController {
         return (userId != null) ? userService.findById(userId) : null;
     }
 
-    /* ------------------- API ------------------- */
-
+   //게시글 목록: 페이징/정렬/검색 제공
     @GetMapping
-    public ResponseEntity<List<PostResponseDto>> getAllPosts(
-            @AuthenticationPrincipal CustomUserDetails loginUser
+    public ResponseEntity<Page<PostResponseDto>> getAllPosts(
+            @AuthenticationPrincipal CustomUserDetails loginUser,
+            @RequestParam(name = "keyword", required = false) String keyword,
+            @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         User loginUserEntity = optionalLoginUser(loginUser);
-        List<PostResponseDto> posts = postService.getAll(loginUserEntity);
+        Page<PostResponseDto> posts = postService.getAll(loginUserEntity, pageable, keyword);
         return ResponseEntity.ok(posts);
     }
 
@@ -83,7 +87,6 @@ public class PostController {
             @AuthenticationPrincipal CustomUserDetails loginUser
     ) {
         Long userId = requireLoginUserId(loginUser);
-        // 원본 시그니처 유지: updateByUser(id, dto, userId)
         postService.updateByUser(id, dto, userId);
         return ResponseEntity.ok().build();
     }
@@ -94,7 +97,6 @@ public class PostController {
             @AuthenticationPrincipal CustomUserDetails loginUser
     ) {
         Long userId = requireLoginUserId(loginUser);
-        // 원본 시그니처 유지: deleteByUser(id, userId)
         postService.deleteByUser(id, userId);
         return ResponseEntity.noContent().build();
     }
@@ -106,7 +108,6 @@ public class PostController {
             @AuthenticationPrincipal CustomUserDetails loginUser
     ) {
         User user = requireLoginUser(loginUser);
-        // 원본 시그니처 유지: like(id, user)
         postService.like(id, user);
         return ResponseEntity.ok().build();
     }
@@ -118,7 +119,6 @@ public class PostController {
             @AuthenticationPrincipal CustomUserDetails loginUser
     ) {
         User user = requireLoginUser(loginUser);
-        // 원본 시그니처 유지: unlike(id, user)
         postService.unlike(id, user);
         return ResponseEntity.ok().build();
     }
