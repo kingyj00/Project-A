@@ -9,6 +9,7 @@ import com.ll.P_A.security.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.*;
 
 import java.util.List;
 import java.util.Optional;
@@ -65,7 +66,7 @@ class PostServiceTest {
     }
 
     @Test
-    void getAll_shouldReturnListOfPostResponseDto() {
+    void getAll_shouldReturnPageOfPostResponseDto_whenNoKeyword() {
         // given
         User user = User.builder()
                 .id(1L)
@@ -80,14 +81,54 @@ class PostServiceTest {
                 .author(user)
                 .build();
 
-        when(postRepository.findAll()).thenReturn(List.of(post));
+        Pageable pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
+        Page<PostEntity> page = new PageImpl<>(List.of(post), pageable, 1);
+
+        when(postRepository.findAll(pageable)).thenReturn(page);
 
         // when
-        var result = postService.getAll(user);
+        var result = postService.getAll(user, pageable, null);
 
         // then
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).toString()).contains("title"); // indirect check
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).toString()).contains("title"); // indirect check
+        verify(postRepository).findAll(pageable);
+        verifyNoMoreInteractions(postRepository);
+    }
+
+    @Test
+    void getAll_shouldSearchByKeyword_titleOrContent() {
+        // given
+        User user = User.builder()
+                .id(1L)
+                .username("tester")
+                .email("test@example.com")
+                .build();
+
+        PostEntity post = PostEntity.builder()
+                .id(2L)
+                .title("spring tips")
+                .content("awesome content")
+                .author(user)
+                .build();
+
+        Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "id"));
+        String keyword = "spring";
+        Page<PostEntity> page = new PageImpl<>(List.of(post), pageable, 1);
+
+        when(postRepository.findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(
+                keyword, keyword, pageable
+        )).thenReturn(page);
+
+        // when
+        var result = postService.getAll(user, pageable, keyword);
+
+        // then
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        assertThat(result.getContent().get(0).toString()).contains("spring");
+        verify(postRepository).findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(keyword, keyword, pageable);
+        verifyNoMoreInteractions(postRepository);
     }
 
     @Test
