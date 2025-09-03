@@ -4,7 +4,7 @@ spring:
     username: ${DB_USERNAME:sa}
     password: ${DB_PASSWORD:}
 jwt:
-  secret: ${JWT_SECRET:dev-secret-only-for-local}
+  secret: ${JWT_SECRET:ThisIsAVeryLongLocalDevSecretKey_AtLeast32Chars!}
   access-token-validity-ms: 900000
   refresh-token-validity-ms: 1209600000
 mail:
