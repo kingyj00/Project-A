@@ -3,13 +3,21 @@ spring:
     url: ${DB_URL:jdbc:h2:mem:test}
     username: ${DB_USERNAME:sa}
     password: ${DB_PASSWORD:}
+
 jwt:
   secret: ${JWT_SECRET:ThisIsAVeryLongLocalDevSecretKey_AtLeast32Chars!}
-  access-token-validity-ms: 900000
-  refresh-token-validity-ms: 1209600000
+  access-token-validity-ms: 900000          # 15분
+  refresh-token-validity-ms: 1209600000     # 14일
+
 mail:
   username: ${MAIL_USERNAME:}
   password: ${MAIL_PASSWORD:}
+
 redis:
   host: ${REDIS_HOST:localhost}
   port: ${REDIS_PORT:6379}
+
+app:
+  verify:
+    # 메일 인증 링크 베이스 URL (로컬 기본값)
+    base-url: ${APP_VERIFY_BASE_URL:http://localhost:8080}
