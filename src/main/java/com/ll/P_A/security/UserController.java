@@ -20,7 +20,6 @@ public class UserController {
 
     /* ---------- 공통 유틸 ---------- */
 
-    /** "Authorization: Bearer xxx" 에서 토큰만 추출 */
     private String extractBearer(String header) {
         if (!StringUtils.hasText(header)) return null;
         if (header.startsWith("Bearer ")) return header.substring(7);
