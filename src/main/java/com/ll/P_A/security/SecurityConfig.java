@@ -16,6 +16,8 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 
 @Configuration
 @RequiredArgsConstructor
@@ -26,9 +28,22 @@ public class SecurityConfig {
     private final CustomUserDetailsService customUserDetailsService;
     private final Environment environment;
 
+    private static final String[] SWAGGER_WHITELIST = {
+            "/swagger-ui.html", "/swagger-ui/**",
+            "/v3/api-docs", "/v3/api-docs/**", "/api-docs/**"
+    };
+
+    private static final String[] H2_WHITELIST = {
+            "/h2-console/**"
+    };
+
+    private static final String[] PUBLIC_WHITELIST = {
+            "/", "/error", "/actuator/health", "/favicon.ico",
+            "/css/**", "/js/**", "/images/**"
+    };
+
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
-        // UserService가 이 타입을 직접 의존
         return new BCryptPasswordEncoder();
     }
 
@@ -37,42 +52,68 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-    private boolean isDevProfileActive() {
+    /** dev 또는 test 프로필이면 true */
+    private boolean isDevOrTest() {
         for (String p : environment.getActiveProfiles()) {
-            if ("dev".equalsIgnoreCase(p)) return true;
+            if ("dev".equalsIgnoreCase(p) || "test".equalsIgnoreCase(p)) return true;
         }
         return false;
     }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        boolean isDev = isDevProfileActive();
+        boolean isDevOrTest = isDevOrTest();
 
         http
-                // 세션 전면 비사용 + 폼로그인/HTTP Basic 비활성(Stateless 보장)
-                .csrf(csrf -> csrf.disable())
+                /* H2 콘솔이 iframe으로 뜨기 때문에 sameOrigin 필요 */
+                .headers(h -> h.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
+
+                /* JWT 기반이므로 CSRF 비활성화.
+                   단, Swagger/H2는 CSRF 예외로 빼주면 콘솔/문서 POST 요청에서도 403 방지됨 */
+                .csrf(csrf -> csrf
+                        .ignoringRequestMatchers(
+                                new AntPathRequestMatcher("/h2-console/**"),
+                                new AntPathRequestMatcher("/swagger-ui/**"),
+                                new AntPathRequestMatcher("/v3/api-docs/**")
+                        )
+                        .disable()
+                )
+
+                /* 세션 비사용(Stateless) + form/basic 로그인 비활성 */
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .formLogin(fl -> fl.disable())
                 .httpBasic(hb -> hb.disable())
 
-                // 엔드포인트 접근 정책
-                .authorizeHttpRequests(auth -> {
-                    auth.requestMatchers("/api/auth/**").permitAll();            // 로그인/회원가입/재발급 등
-                    auth.requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll(); // 게시글 조회는 공개
+                /* CORS 기본 허용 (필요 시 WebMvcConfigurer로 상세 설정) */
+                .cors(cors -> {})
 
-                    if (isDev) {
-                        // 개발 프로파일에서만 Swagger 허용
-                        auth.requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll();
+                /* 엔드포인트 인가 규칙 */
+                .authorizeHttpRequests(auth -> {
+                    // 프리플라이트(OPTIONS) 허용
+                    auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
+
+                    // 공개 API
+                    auth.requestMatchers("/api/auth/**").permitAll(); // 로그인/회원가입/재발급 등
+                    auth.requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll(); // 게시글 조회 공개
+
+                    // 공용 공개 리소스
+                    auth.requestMatchers(PUBLIC_WHITELIST).permitAll();
+
+                    // dev/test 프로필에서는 Swagger/H2 콘솔 허용
+                    if (isDevOrTest) {
+                        auth.requestMatchers(SWAGGER_WHITELIST).permitAll();
+                        auth.requestMatchers(H2_WHITELIST).permitAll();
                     }
 
+                    // 나머지는 인증 필요
                     auth.anyRequest().authenticated();
-                })
+                });
 
-                // JWT 인증 필터 삽입
-                .addFilterBefore(
-                        new JwtAuthenticationFilter(jwtTokenProvider, customUserDetailsService),
-                        UsernamePasswordAuthenticationFilter.class
-                );
+        // JWT 인증 필터 삽입 (UsernamePasswordAuthenticationFilter 앞)
+        http.addFilterBefore(
+                new JwtAuthenticationFilter(jwtTokenProvider, customUserDetailsService),
+                UsernamePasswordAuthenticationFilter.class
+        );
 
         return http.build();
     }
