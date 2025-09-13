@@ -74,6 +74,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (StringUtils.hasText(token)) {
                 try {
                     if (jwtTokenProvider.validateToken(token)) {
+
+                        //보호 API에서는 Access Token만 허용
+                        String typ = jwtTokenProvider.getTokenType(token);
+                        if (!"access".equals(typ)) {
+                            writeUnauthorizedIfNotCommitted(response, "{\"error\":\"Only AccessToken allowed\"}");
+                            return;
+                        }
+
                         String username = jwtTokenProvider.getUsernameFromToken(token);
                         UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
@@ -109,7 +117,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (!StringUtils.hasText(header)) return null;
 
         String value = header.trim();
-        // e.g., "Bearer abc.def.ghi" / "bearer   abc..."
         if (value.toLowerCase(Locale.ROOT).startsWith("bearer")) {
             String[] parts = value.split("\\s+");
             if (parts.length >= 2) {
