@@ -39,7 +39,7 @@ dependencies {
 
     // === DB Drivers ===
     runtimeOnly  'com.mysql:mysql-connector-j'  // 실제 DB 사용 시
-    runtimeOnly  'com.h2database:h2'            // 앱 실행(test 프로필)에서도 H2 사용 가능
+    implementation 'com.h2database:h2'            // 앱 실행(test 프로필)에서도 H2 사용 가능
     testImplementation 'com.h2database:h2'      // 테스트 코드에서 H2 사용
 
     // === OpenAPI ===
