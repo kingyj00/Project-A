@@ -2,7 +2,6 @@ spring:
   # === DB: H2 (메모리) ===
   datasource:
     url: jdbc:h2:mem:testdb;MODE=MySQL
-    driver-class-name: org.h2.Driver
     username: sa
     password:
 
@@ -26,6 +25,11 @@ spring:
       - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
       - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
 
+  # === DevTools 재시작 비활성 (클래스패스 꼬임 방지) ===
+  devtools:
+    restart:
+      enabled: false
+
   # (선택) 메일 사용 안 하면 로컬 더미 설정
   mail:
     host: localhost
@@ -35,13 +39,13 @@ spring:
 server:
   port: 0
 
-# === JWT(요청하신 값 그대로) ===
+# === JWT(테스트 전용 시크릿/만료) ===
 jwt:
   secret: ThisIsALongEnoughJwtSecretForTests_AtLeast32Chars!!
   access-token-validity-ms: 900000
   refresh-token-validity-ms: 1209600000
 
-# === 로깅(쿼리 확인 편의) ===
+# === 로깅(쿼리/바인딩 확인) ===
 logging:
   level:
     org.hibernate.SQL: debug
