@@ -1,52 +1,25 @@
 spring:
-  # === DB: H2 (메모리) ===
   datasource:
     url: jdbc:h2:mem:testdb;MODE=MySQL
     username: sa
     password:
-
   jpa:
     hibernate:
-      ddl-auto: update     # 테스트에서는 update/create 권장
+      ddl-auto: update
     properties:
       hibernate:
         format_sql: true
-    show-sql: true
+  show-sql: true
 
-  # === H2 콘솔 ===
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-
-  # === 테스트에서 불필요한 자동설정 제외 (Redis 비활성화) ===
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
-      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
-
-  # === DevTools 재시작 비활성 (클래스패스 꼬임 방지) ===
-  devtools:
-    restart:
-      enabled: false
-
-  # (선택) 메일 사용 안 하면 로컬 더미 설정
-  mail:
-    host: localhost
-    port: 25
-
-# === 서버: 테스트 시 임의 포트 사용(충돌 방지) ===
 server:
   port: 0
 
-# === JWT(테스트 전용 시크릿/만료) ===
 jwt:
   secret: ThisIsALongEnoughJwtSecretForTests_AtLeast32Chars!!
   access-token-validity-ms: 900000
   refresh-token-validity-ms: 1209600000
 
-# === 로깅(쿼리/바인딩 확인) ===
 logging:
   level:
     org.hibernate.SQL: debug
-    org.hibernate.orm.jdbc.bind: trace./gradlew bootRun --args='--spring.profiles.active=test'
+    org.hibernate.orm.jdbc.bind: trace
