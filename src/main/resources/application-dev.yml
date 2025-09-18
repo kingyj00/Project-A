@@ -1,22 +1,36 @@
+# 개발 환경 DB 설정 (보통 MySQL 사용)
 spring:
   datasource:
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: ${DB_URL} # DB 접속 URL
+    driver-class-name: ${DB_DRIVER:com.mysql.cj.jdbc.Driver} # MySQL 드라이버
+    username: ${DB_USERNAME} # DB 사용자명
+    password: ${DB_PASSWORD} # DB 비밀번호
 
+  jpa:
+    hibernate:
+      ddl-auto: update # 개발 환경은 스키마 자동 업데이트
+    properties:
+      hibernate:
+        format_sql: true # SQL 포맷팅
+    # show-sql: true # SQL 로그 확인 원하면 주석 해제
+
+# JWT 토큰 설정
 jwt:
-  secret: ${JWT_SECRET}
-  access-token-validity-ms: 900000
-  refresh-token-validity-ms: 1209600000
+  secret: ${JWT_SECRET} # 운영 환경에서 반드시 환경변수로 세팅
+  access-token-validity-ms: 900000 # 15분
+  refresh-token-validity-ms: 1209600000 # 14일
 
+# 메일 발송 계정
 mail:
-  username: ${MAIL_USERNAME}
-  password: ${MAIL_PASSWORD}
+  username: ${MAIL_USERNAME} # 메일 아이디
+  password: ${MAIL_PASSWORD} # 메일 비번
 
+# Redis 접속 정보
 redis:
-  host: ${REDIS_HOST}
-  port: ${REDIS_PORT}
+  host: ${REDIS_HOST} # Redis 호스트
+  port: ${REDIS_PORT} # Redis 포트
 
+# 이메일 인증 링크 베이스 URL
 app:
   verify:
-    base-url: ${APP_VERIFY_BASE_URL}
+    base-url: ${APP_VERIFY_BASE_URL} # 인증 링크 기본 URL
