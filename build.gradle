@@ -1,59 +1,60 @@
 plugins {
-    id 'java'
-    id 'org.springframework.boot' version '3.4.4'
-    id 'io.spring.dependency-management' version '1.1.7'
+    id 'java' // 자바 플러그인
+    id 'org.springframework.boot' version '3.4.4' // 스프링부트 플러그인
+    id 'io.spring.dependency-management' version '1.1.7' // 의존성 버전 정합성 관리
 }
 
-group = 'com.ll'
-version = '0.0.1-SNAPSHOT'
+group = 'com.ll' // 그룹 ID
+version = '0.0.1-SNAPSHOT' // 버전
 
 java {
-    toolchain { languageVersion = JavaLanguageVersion.of(21) }
+    toolchain { languageVersion = JavaLanguageVersion.of(21) } // 자바 21
 }
 
 configurations {
-    compileOnly { extendsFrom annotationProcessor }
+    compileOnly { extendsFrom annotationProcessor } // lombok 컴파일 전용
 }
 
-repositories { mavenCentral() }
+repositories {
+    mavenCentral() // 중앙 저장소
+}
 
 dependencies {
     // === Spring Boot Starters ===
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-security'
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-    implementation 'org.springframework.boot:spring-boot-starter-validation'
-    implementation 'org.springframework.boot:spring-boot-starter-mail'
-    // 소셜 로그인용 (추 후 구글, 네이버, 카카오 로그인 구현 시)
-    // implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+    implementation 'org.springframework.boot:spring-boot-starter-web' // 웹
+    implementation 'org.springframework.boot:spring-boot-starter-security' // 시큐리티
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa' // JPA
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis' // Redis
+    implementation 'org.springframework.boot:spring-boot-starter-validation' // 검증
+    implementation 'org.springframework.boot:spring-boot-starter-mail' // 메일
+    // implementation 'org.springframework.boot:spring-boot-starter-oauth2-client' // 소셜로그인 필요 시 주석 해제
 
     // === Lombok ===
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
+    compileOnly 'org.projectlombok:lombok' // 빌드 시에만 필요
+    annotationProcessor 'org.projectlombok:lombok' // 애너테이션 처리기
 
     // === JWT ===
-    implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
-    runtimeOnly  'io.jsonwebtoken:jjwt-impl:0.11.5'
-    runtimeOnly  'io.jsonwebtoken:jjwt-jackson:0.11.5'
+    implementation 'io.jsonwebtoken:jjwt-api:0.11.5' // JJWT API
+    runtimeOnly  'io.jsonwebtoken:jjwt-impl:0.11.5' // JJWT 구현체
+    runtimeOnly  'io.jsonwebtoken:jjwt-jackson:0.11.5' // JJWT Jackson 바인딩
 
     // === DB Drivers ===
-    runtimeOnly  'com.mysql:mysql-connector-j'  // 실제 DB 사용 시
-    implementation 'com.h2database:h2'            // 앱 실행(test 프로필)에서도 H2 사용 가능
-    testImplementation 'com.h2database:h2'      // 테스트 코드에서 H2 사용
+    runtimeOnly  'com.mysql:mysql-connector-j' // MySQL 드라이버(dev/prod)
+    implementation 'com.h2database:h2' // ★ 런타임 포함(H2 드라이버 미인식 방지의 핵심)
+    // testImplementation 'com.h2database:h2' // 불필요하므로 제거(implementation으로 충분)
 
     // === OpenAPI ===
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0' // Swagger UI
 
     // === Dev tools ===
-    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools' // 핫리로드(개발 전용)
 
     // === Testing ===
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testImplementation 'org.springframework.security:spring-security-test'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test' // 테스트
+    testImplementation 'org.springframework.security:spring-security-test' // 시큐리티 테스트
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher' // JUnit 런처
 }
 
 test {
-    useJUnitPlatform()
+    useJUnitPlatform() // JUnit 5
 }
