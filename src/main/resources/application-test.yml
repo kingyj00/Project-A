@@ -1,25 +1,30 @@
+# 테스트 환경 DB (H2 메모리, MySQL 모드)
 spring:
   datasource:
-    url: jdbc:h2:mem:testdb;MODE=MySQL
-    username: sa
-    password:
+    url: jdbc:h2:mem:testdb;MODE=MySQL # 테스트용 H2 DB
+    driver-class-name: org.h2.Driver # H2 드라이버 명시
+    username: sa # 기본 사용자
+    password: # 비밀번호 없음
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: update # 테스트 시 스키마 자동 업데이트
     properties:
       hibernate:
-        format_sql: true
-  show-sql: true
+        format_sql: true # SQL 포맷팅
+  show-sql: true # SQL 로그 출력
 
+# 테스트 서버는 랜덤 포트 사용
 server:
   port: 0
 
+# JWT 토큰 설정 (테스트용 하드코딩 시크릿)
 jwt:
   secret: ThisIsALongEnoughJwtSecretForTests_AtLeast32Chars!!
-  access-token-validity-ms: 900000
-  refresh-token-validity-ms: 1209600000
+  access-token-validity-ms: 900000 # 15분
+  refresh-token-validity-ms: 1209600000 # 14일
 
+# Hibernate SQL 로그 레벨
 logging:
   level:
-    org.hibernate.SQL: debug
-    org.hibernate.orm.jdbc.bind: trace
+    org.hibernate.SQL: debug # 실행 SQL 로그
+    org.hibernate.orm.jdbc.bind: trace # 바인딩 파라미터 로그
