@@ -45,15 +45,14 @@ app:
   verify:
     base-url: ${APP_VERIFY_BASE_URL:http://localhost:8080}
 
-# Swagger / OpenAPI 설정 (스캔 범위 축소로 /v3/api-docs 500 방지)
+# Swagger / OpenAPI 설정 (스캔 범위/옵션 보강으로 /v3/api-docs 500 방지)
 springdoc:
   api-docs:
-    # /v3/api-docs 활성화
-    enabled: true
+    enabled: true # /v3/api-docs 활성화
   swagger-ui:
-    # /swagger-ui/index.html 활성화
-    enabled: true
-  # 컨트롤러가 있는 최상위 패키지만 스캔(불필요한 엔티티/프록시 스캔 방지)
-  packages-to-scan: com.ll.P_A
-  # API 경로만 문서화(필요 시 "/" 등으로 넓힐 수 있음)
-  paths-to-match: /api/**
+    enabled: true # /swagger-ui/index.html 활성화
+  packages-to-scan: com.ll.P_A # 컨트롤러가 들어있는 최상위 패키지로 한정(필요시 더 좁혀도 OK)
+  paths-to-match: /** # 일단 전경로 허용(문서 대상 누락으로 인한 500 방지)
+  remove-broken-reference-definitions: true # 끊긴 참조 스키마 무시하고 진행
+  default-consumes-media-type: application/json # 기본 요청 미디어 타입
+  default-produces-media-type: application/json # 기본 응답 미디어 타입
