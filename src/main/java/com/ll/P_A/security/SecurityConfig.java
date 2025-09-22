@@ -2,7 +2,7 @@ package com.ll.P_A.security;
 
 import com.ll.P_A.security.jwt.CustomUserDetailsService;
 import com.ll.P_A.security.jwt.JwtAuthenticationFilter;
-import com.ll.P_A.security.jwt.JwtTokenProvider;
+import com.ll_P_A.security.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -69,14 +69,15 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        boolean localLike = isLocalLike(); // 로컬 모드 여부
         boolean h2Enabled = environment.getProperty("spring.h2.console.enabled", Boolean.class, false); // H2 콘솔 on/off
 
         http
-                .headers(h -> h.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)) // H2 콘솔 iframe 허용
+                // H2 콘솔이 iframe으로 뜨므로 동일 출처 허용
+                .headers(h -> h.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
 
+                // JWT 기반이라 CSRF 비활성화 + Swagger/H2는 예외로 무시
                 .csrf(csrf -> csrf
-                        .ignoringRequestMatchers( // Swagger/H2는 CSRF 예외
+                        .ignoringRequestMatchers(
                                 new AntPathRequestMatcher("/h2-console/**"),
                                 new AntPathRequestMatcher("/swagger-ui/**"),
                                 new AntPathRequestMatcher("/v3/api-docs/**"),
@@ -84,31 +85,40 @@ public class SecurityConfig {
                                 new AntPathRequestMatcher("/webjars/**"),
                                 new AntPathRequestMatcher("/swagger-ui.html")
                         )
-                        .disable() // JWT 사용 시 CSRF 비활성
+                        .disable()
                 )
 
-                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // 세션 미사용
-                .formLogin(fl -> fl.disable()) // 폼 로그인 비활성
-                .httpBasic(hb -> hb.disable()) // 기본 인증 비활성
-                .cors(cors -> {}) // CORS 기본 허용
+                // 세션 미사용, 폼/Basic 인증 비활성화
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .formLogin(fl -> fl.disable())
+                .httpBasic(hb -> hb.disable())
 
+                // CORS 기본 허용
+                .cors(cors -> {})
+
+                // 인가 규칙
                 .authorizeHttpRequests(auth -> {
-                    auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll(); // 프리플라이트 허용
+                    // 프리플라이트 허용
+                    auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
 
-                    auth.requestMatchers("/api/auth/**").permitAll(); // 로그인/회원가입/토큰 재발급 등 공개
-                    auth.requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll(); // 게시글 조회 공개
-                    auth.requestMatchers(PUBLIC_WHITELIST).permitAll(); // 정적/공용
+                    // 공개 API
+                    auth.requestMatchers("/api/auth/**").permitAll(); // 로그인/회원가입/재발급 등
+                    auth.requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll(); // 예: 게시글 조회 공개
 
-                    // Swagger는 로컬처럼 동작할 때만 전체 허용
-                    if (localLike) auth.requestMatchers(SWAGGER_WHITELIST).permitAll();
+                    // 정적/공용 자원
+                    auth.requestMatchers(PUBLIC_WHITELIST).permitAll();
 
-                    // H2 콘솔은 spring.h2.console.enabled=true 일 때만 허용(프로필 무관)
+                    // ★ Swagger는 프로필과 무관하게 항상 허용 (문서 접근/생성 보장)
+                    auth.requestMatchers(SWAGGER_WHITELIST).permitAll();
+
+                    // H2 콘솔은 설정이 켜졌을 때만 허용
                     if (h2Enabled) auth.requestMatchers(H2_WHITELIST).permitAll();
 
-                    auth.anyRequest().authenticated(); // 나머지는 인증 필요
+                    // 나머지는 인증 필요
+                    auth.anyRequest().authenticated();
                 });
 
-        // JWT 필터 삽입(UsernamePasswordAuthenticationFilter 앞)
+        // JWT 인증 필터 삽입 (UsernamePasswordAuthenticationFilter 앞)
         http.addFilterBefore(
                 new JwtAuthenticationFilter(jwtTokenProvider, customUserDetailsService),
                 UsernamePasswordAuthenticationFilter.class
