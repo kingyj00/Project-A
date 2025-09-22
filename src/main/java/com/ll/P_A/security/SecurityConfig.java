@@ -2,7 +2,7 @@ package com.ll.P_A.security;
 
 import com.ll.P_A.security.jwt.CustomUserDetailsService;
 import com.ll.P_A.security.jwt.JwtAuthenticationFilter;
-import com.ll_P_A.security.jwt.JwtTokenProvider;
+import com.ll.P_A.security.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
