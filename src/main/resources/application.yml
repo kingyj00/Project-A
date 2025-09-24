@@ -3,21 +3,21 @@ spring:
   datasource:
     # 기본값: H2 메모리 DB (MySQL 문법 호환을 위해 MODE=MySQL 옵션 추가)
     url: ${DB_URL:jdbc:h2:mem:testdb;MODE=MySQL}
-    # 드라이버를 명시해 클래스패스 인식 실패를 방지 (문제의 핵심)
+    # 드라이버를 명시해 클래스패스 인식 실패를 방지
     driver-class-name: ${DB_DRIVER:org.h2.Driver}
     username: ${DB_USERNAME:sa}
     password: ${DB_PASSWORD:}
 
   jpa:
-    # 개발/로컬에선 스키마를 자동으로 맞춤 (운영은 보통 none/validate 권장)
+    # 개발/로컬에선 스키마를 자동으로 맞춤
     hibernate:
       ddl-auto: update
     properties:
       hibernate:
         # 콘솔에서 SQL을 보기 좋게
         format_sql: true
-    # SQL 로그 출력이 필요하면 주석 해제
-    # show-sql: true
+        # 트랜잭션 밖에서도 Lazy 로딩 허용
+        enable_lazy_load_no_trans: true
 
   h2:
     console:
@@ -26,7 +26,8 @@ spring:
 
   jackson:
     serialization:
-      FAIL_ON_EMPTY_BEANS: false # Hibernate 프록시/빈 객체 직렬화 예외 방지(스웨거 500 완화)
+      # Hibernate 프록시/빈 객체 직렬화 예외 방지(스웨거 500 완화)
+      FAIL_ON_EMPTY_BEANS: false
 
 # JWT 토큰 유효시간/시크릿 기본값 (운영은 꼭 환경변수로 교체)
 jwt:
