@@ -30,8 +30,8 @@ dependencies {
     // implementation 'org.springframework.boot:spring-boot-starter-oauth2-client' // 소셜로그인 필요 시 주석 해제
 
     // === Lombok ===
-    compileOnly 'org.projectlombok:lombok' // 빌드 시에만 필요
-    annotationProcessor 'org.projectlombok:lombok' // 애너테이션 처리기
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
 
     // === JWT ===
     implementation 'io.jsonwebtoken:jjwt-api:0.11.5' // JJWT API
@@ -40,14 +40,16 @@ dependencies {
 
     // === DB Drivers ===
     runtimeOnly  'com.mysql:mysql-connector-j' // MySQL 드라이버(dev/prod)
-    implementation 'com.h2database:h2' // ★ 런타임 포함(H2 드라이버 미인식 방지의 핵심)
-    // testImplementation 'com.h2database:h2' // 불필요하므로 제거(implementation으로 충분)
+    implementation 'com.h2database:h2' // H2 드라이버
 
     // === OpenAPI ===
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0' // Swagger UI (2.6.0으로 상향)
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0' // Swagger UI
+
+    // === Jackson Hibernate 모듈(중요) ===
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-hibernate5:2.17.2' // Hibernate 프록시/지연로딩
 
     // === Dev tools ===
-    developmentOnly 'org.springframework.boot:spring-boot-devtools' // 핫리로드(개발 전용)
+    developmentOnly 'org.springframework.boot:spring-boot-devtools' // (개발 전용)
 
     // === Testing ===
     testImplementation 'org.springframework.boot:spring-boot-starter-test' // 테스트
