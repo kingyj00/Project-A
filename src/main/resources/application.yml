@@ -49,14 +49,14 @@ app:
   verify:
     base-url: ${APP_VERIFY_BASE_URL:http://localhost:8080}
 
-# Swagger / OpenAPI 설정 (문서 생성 안전화: 우선 스캔 대상 0으로 만들어 500 차단)
+# Swagger / OpenAPI 설정 (루트 패키지 스캔 + 안정화 옵션)
 springdoc:
   api-docs:
     enabled: true # /v3/api-docs 활성화
   swagger-ui:
     enabled: true # /swagger-ui/index.html 활성화
-  packages-to-scan: com.ll.P_A.__doc_sanity__ # 존재하지 않는 패키지로 설정(우선 엔드포인트 스캔 0개로 띄우기)
-  paths-to-match: /** # 일단 전경로 허용(필요 시 좁힐 수 있음)
+  packages-to-scan: com.ll.P_A # 컨트롤러가 흩어져 있어도 루트 패키지로 모두 스캔
+  paths-to-match: /** # 전 경로 허용(필요 시 /api/** 등으로 조정)
   remove-broken-reference-definitions: true # 끊긴 참조 스키마 무시하고 진행
   default-consumes-media-type: application/json # 기본 요청 미디어 타입
   default-produces-media-type: application/json # 기본 응답 미디어 타입
