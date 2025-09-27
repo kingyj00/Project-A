@@ -54,6 +54,9 @@ springdoc:
   api-docs:
     enabled: true
     path: /v3/api-docs
+  # ★ 추가: 문서 스캔 범위를 컨트롤러 패키지 & /api/** 경로로 제한해 /v3/api-docs 500 방지
+  packages-to-scan: com.ll.P_A
+  paths-to-match: /api/**
 
 # Actuator 노출 (헬스체크 등)
 management:
