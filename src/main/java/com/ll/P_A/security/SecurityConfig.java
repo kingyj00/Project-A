@@ -19,6 +19,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
+
 @Configuration
 @RequiredArgsConstructor
 @EnableMethodSecurity(prePostEnabled = true)
@@ -93,8 +100,22 @@ public class SecurityConfig {
                 .formLogin(fl -> fl.disable())
                 .httpBasic(hb -> hb.disable())
 
-                // CORS 기본 허용
+                // CORS 기본 허용 (아래 CorsConfigurationSource bean과 함께 작동)
                 .cors(cors -> {})
+
+                // 인증/인가 실패를 500이 아니라 401/403으로 명확히 내려줌
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint((request, response, authEx) -> {
+                            if (!response.isCommitted()) {
+                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED); // 401
+                            }
+                        })
+                        .accessDeniedHandler((request, response, accessEx) -> {
+                            if (!response.isCommitted()) {
+                                response.sendError(HttpServletResponse.SC_FORBIDDEN); // 403
+                            }
+                        })
+                )
 
                 // 인가 규칙
                 .authorizeHttpRequests(auth -> {
@@ -108,7 +129,7 @@ public class SecurityConfig {
                     // 정적/공용 자원
                     auth.requestMatchers(PUBLIC_WHITELIST).permitAll();
 
-                    // ★ Swagger는 프로필과 무관하게 항상 허용 (문서 접근/생성 보장)
+                    // Swagger는 프로필과 무관하게 항상 허용 (문서 접근/생성 보장)
                     auth.requestMatchers(SWAGGER_WHITELIST).permitAll();
 
                     // H2 콘솔은 설정이 켜졌을 때만 허용
@@ -125,5 +146,19 @@ public class SecurityConfig {
         );
 
         return http.build();
+    }
+
+    // CORS 정책
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration cfg = new CorsConfiguration();
+        cfg.setAllowedOriginPatterns(List.of("*"));
+        cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        cfg.setAllowedHeaders(List.of("*"));
+        cfg.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", cfg);
+        return source;
     }
 }
