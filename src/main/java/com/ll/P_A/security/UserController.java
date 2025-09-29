@@ -17,6 +17,7 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+    private final RefreshTokenService refreshTokenService; // Refresh 토큰 로직 호출용
 
     /* ---------- 공통 유틸 ---------- */
 
@@ -48,16 +49,30 @@ public class UserController {
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/logout")
     public String logout(@AuthenticationPrincipal CustomUserDetails loginUser) {
-        // 사용자명 대신 ID로 감사/추적 일관화
         userService.logout(loginUser.getUsername());
         return "로그아웃 완료되었습니다.";
     }
 
-    // refresh 토큰은 접근 토큰 없이도 재발급 가능하게 두는 것이 일반적 → PreAuthorize 없음
+    // Refresh 로테이션 적용
     @PostMapping("/reissue")
     public LoginResponse reissue(@RequestHeader(HttpHeaders.AUTHORIZATION) String refreshHeader) {
         String refreshToken = extractBearer(refreshHeader);
-        return userService.reissueToken(refreshToken);
+
+        // 1. 토큰 메타 확인
+        RefreshTokenMeta meta = refreshTokenService.findByToken(refreshToken);
+        if (meta == null || meta.isRevoked() || meta.isExpired()) {
+            // 재사용 공격 or 만료
+            if (meta != null) {
+                refreshTokenService.revokeFamily(meta.getFamilyId()); // 묶음 전체 차단
+            }
+            throw new RuntimeException("재로그인이 필요합니다.");
+        }
+
+        // 2. 이전 토큰 폐기
+        refreshTokenService.revoke(meta.getTokenId());
+
+        // 3. 새 Access + 새 Refresh 발급
+        return userService.reissueTokenWithRotation(meta.getUserId(), meta.getFamilyId());
     }
 
     @PreAuthorize("hasRole('ADMIN')")
@@ -65,7 +80,7 @@ public class UserController {
     public String deleteUser(@PathVariable Long id,
                              @AuthenticationPrincipal CustomUserDetails loginUser) {
         User admin = loginUser.getUser();
-        userService.deleteById(id, admin.getId()); // 관리자 ID로 감사/검증
+        userService.deleteById(id, admin.getId());
         return "사용자 삭제 완료";
     }
 
@@ -86,7 +101,7 @@ public class UserController {
     public String updateMyInfo(@Valid @RequestBody UserUpdateRequest request,
                                @AuthenticationPrincipal CustomUserDetails loginUser) {
         Long currentUserId = loginUser.getUser().getId();
-        userService.updateUser(request, currentUserId, currentUserId); // 자기자신 검증
+        userService.updateUser(request, currentUserId, currentUserId);
         return "회원정보 수정 완료";
     }
 
@@ -94,7 +109,7 @@ public class UserController {
     @DeleteMapping("/me")
     public String deleteMyAccount(@AuthenticationPrincipal CustomUserDetails loginUser) {
         Long currentUserId = loginUser.getUser().getId();
-        userService.deleteById(currentUserId, currentUserId); // 자기자신 검증
+        userService.deleteById(currentUserId, currentUserId);
         return "회원 탈퇴가 완료되었습니다.";
     }
 }
