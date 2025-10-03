@@ -104,6 +104,7 @@ public class UserService {
                 user.getId(),
                 rp.jti(),
                 deviceId,
+                null,                          // familyId 없음 → null로 저장
                 rp.expiresAt().toInstant()
         );
 
@@ -134,7 +135,7 @@ public class UserService {
         }
 
         // 정상 요청 → 기존 토큰 ROTATED 표시
-        refreshTokenService.markRotated(rec.getHash());
+        refreshTokenService.markRotatedByHash(rec.getHash());
 
         // 새 토큰 발급 (기존 deviceId 재사용)
         String deviceId = jwtTokenProvider.getDeviceId(refreshToken);
@@ -149,6 +150,7 @@ public class UserService {
                 user.getId(),
                 newRp.jti(),
                 deviceId,
+                null,                           //  familyId 없음 → null로 저장
                 newRp.expiresAt().toInstant()
         );
 
