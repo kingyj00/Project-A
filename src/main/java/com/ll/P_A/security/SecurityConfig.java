@@ -35,10 +35,11 @@ public class SecurityConfig {
     private final CustomUserDetailsService customUserDetailsService; // 사용자 조회
     private final Environment environment; // 프로필/프로퍼티 확인용
 
-    // Swagger 경로 화이트리스트(전체)
+    // Swagger 경로 화이트리스트
     private static final String[] SWAGGER_WHITELIST = {
             "/swagger-ui.html", "/swagger-ui/**",
-            "/v3/api-docs", "/v3/api-docs/**", "/api-docs/**",
+            "/v3/api-docs", "/v3/api-docs/**", "/v3/api-docs.yaml", //yaml 경로 포함
+            "/api-docs/**",
             "/swagger-resources", "/swagger-resources/**",
             "/webjars/**"
     };
@@ -56,33 +57,32 @@ public class SecurityConfig {
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(); // 비밀번호 인코더
+        return new BCryptPasswordEncoder();
     }
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager(); // 인증 매니저
+        return config.getAuthenticationManager();
     }
 
-    // dev/test 또는 활성 프로필이 없는(default) 경우 로컬처럼 간주
     private boolean isLocalLike() {
-        String[] profiles = environment.getActiveProfiles(); // 활성 프로필
-        if (profiles == null || profiles.length == 0) return true; // 프로필 비어있으면 로컬처럼
+        String[] profiles = environment.getActiveProfiles();
+        if (profiles == null || profiles.length == 0) return true;
         for (String p : profiles) {
-            if ("dev".equalsIgnoreCase(p) || "test".equalsIgnoreCase(p)) return true; // dev/test는 로컬처럼
+            if ("dev".equalsIgnoreCase(p) || "test".equalsIgnoreCase(p)) return true;
         }
-        return false; // 그 외(prod 등)
+        return false;
     }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        boolean h2Enabled = environment.getProperty("spring.h2.console.enabled", Boolean.class, false); // H2 콘솔 on/off
+        boolean h2Enabled = environment.getProperty("spring.h2.console.enabled", Boolean.class, false);
 
         http
-                // H2 콘솔이 iframe으로 뜨므로 동일 출처 허용
+                // H2 콘솔 iframe 허용
                 .headers(h -> h.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
 
-                // JWT 기반이라 CSRF 비활성화 + Swagger/H2는 예외로 무시
+                // JWT 기반: CSRF 비활성화 (Swagger/H2는 예외 등록)
                 .csrf(csrf -> csrf
                         .ignoringRequestMatchers(
                                 new AntPathRequestMatcher("/h2-console/**"),
@@ -95,51 +95,54 @@ public class SecurityConfig {
                         .disable()
                 )
 
-                // 세션 미사용, 폼/Basic 인증 비활성화
+                // 세션 X / 폼로그인 X / Basic X
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .formLogin(fl -> fl.disable())
                 .httpBasic(hb -> hb.disable())
 
-                // CORS 기본 허용 (아래 CorsConfigurationSource bean과 함께 작동)
+                // CORS 허용 (아래 Bean과 연동)
                 .cors(cors -> {})
 
-                // 인증/인가 실패를 500이 아니라 401/403으로 명확히 내려줌
+                // 인증/인가 에러를 401/403으로 명확히
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((request, response, authEx) -> {
-                            if (!response.isCommitted()) {
-                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED); // 401
-                            }
+                            if (!response.isCommitted()) response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
                         })
                         .accessDeniedHandler((request, response, accessEx) -> {
-                            if (!response.isCommitted()) {
-                                response.sendError(HttpServletResponse.SC_FORBIDDEN); // 403
-                            }
+                            if (!response.isCommitted()) response.sendError(HttpServletResponse.SC_FORBIDDEN);
                         })
                 )
 
                 // 인가 규칙
                 .authorizeHttpRequests(auth -> {
-                    // 프리플라이트 허용
+                    // 프리플라이트
                     auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
 
-                    // 공개 API
-                    auth.requestMatchers("/api/auth/**").permitAll(); // 로그인/회원가입/재발급 등
-                    auth.requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll(); // 예: 게시글 조회 공개
+                    // 공개 API (정확히 필요한 것만 허용)
+                    auth.requestMatchers(
+                            "/api/auth/signup",
+                            "/api/auth/login",
+                            "/api/auth/reissue",
+                            "/api/auth/verify-email"
+                    ).permitAll();
 
-                    // 정적/공용 자원
+                    // 예: 게시글 조회 공개
+                    auth.requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll();
+
+                    // 정적/공용 리소스
                     auth.requestMatchers(PUBLIC_WHITELIST).permitAll();
 
-                    // Swagger는 프로필과 무관하게 항상 허용 (문서 접근/생성 보장)
+                    // Swagger 문서/리소스는 항상 허용
                     auth.requestMatchers(SWAGGER_WHITELIST).permitAll();
 
-                    // H2 콘솔은 설정이 켜졌을 때만 허용
+                    // H2 콘솔은 설정 시에만 허용
                     if (h2Enabled) auth.requestMatchers(H2_WHITELIST).permitAll();
 
-                    // 나머지는 인증 필요
+                    // 나머지 전부 인증 필요
                     auth.anyRequest().authenticated();
                 });
 
-        // JWT 인증 필터 삽입 (UsernamePasswordAuthenticationFilter 앞)
+        // JWT 필터 삽입
         http.addFilterBefore(
                 new JwtAuthenticationFilter(jwtTokenProvider, customUserDetailsService),
                 UsernamePasswordAuthenticationFilter.class
@@ -152,7 +155,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
-        cfg.setAllowedOriginPatterns(List.of("*"));
+        cfg.setAllowedOriginPatterns(List.of("*"));  // 운영에서는 구체 도메인으로 제한 권장
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cfg.setAllowedHeaders(List.of("*"));
         cfg.setAllowCredentials(true);
