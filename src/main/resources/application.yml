@@ -61,3 +61,29 @@ springdoc:
   remove-broken-reference-definitions: true # 끊긴 참조 스키마 무시하고 진행
   default-consumes-media-type: application/json # 기본 요청 미디어 타입
   default-produces-media-type: application/json # 기본 응답 미디어 타입
+
+# ============================
+# 결제 관련
+# ============================
+trade:
+  # 개발 초기는 MOCK로 두고, 실결제 붙일 때 환경변수로 PG로 전환
+  mode: ${TRADE_MODE:MOCK}           # MOCK | PG
+
+  pg:
+    # 어떤 PG를 쓸지(예: TOSS, KG, PORTONE 등) — 실제 연동 시 바꿔주면 됨
+    provider: ${TRADE_PG_PROVIDER:TOSS}
+    # PG 연동 키/시크릿 — 절대 깃에 올리지 말고 환경변수로 주입
+    apiKey: ${TRADE_PG_API_KEY:}
+    secretKey: ${TRADE_PG_SECRET:}
+    # 웹훅 서명 검증용 비밀값(필수) — PG 콘솔에서 발급
+    webhookSecret: ${TRADE_PG_WEBHOOK_SECRET:}
+    # 샘플 샌드박스 엔드포인트(실제 PG 문서 값으로 교체)
+    endpointBaseUrl: ${TRADE_PG_ENDPOINT_BASE_URL:https://sandbox-pay.example.com}
+
+  webhook:
+    # PG가 결제 결과를 알려줄 콜백 엔드포인트(컨트롤러와 일치시켜야 함)
+    endpointPath: /api/trade/payments/webhook
+
+  idempotency:
+    # 중복 결제 방지 키(Idempotency-Key) 보관 시간(초)
+    ttlSeconds: ${TRADE_IDEMPOTENCY_TTL_SECONDS:86400}
