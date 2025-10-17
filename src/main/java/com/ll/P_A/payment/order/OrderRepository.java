@@ -1,4 +1,4 @@
-package com.ll.P_A.payment;
+package com.ll.P_A.payment.order;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;

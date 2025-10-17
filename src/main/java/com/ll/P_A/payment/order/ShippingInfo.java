@@ -1,4 +1,4 @@
-package com.ll.P_A.payment;
+package com.ll.P_A.payment.order;
 
 import jakarta.persistence.Embeddable;
 import lombok.*;

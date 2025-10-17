@@ -1,4 +1,4 @@
-package com.ll.P_A.payment;
+package com.ll.P_A.payment.order;
 
 public enum OrderStatus {
     PENDING,          // 주문 생성(결제 전)

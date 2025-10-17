@@ -1,6 +1,5 @@
-package com.ll.P_A.payment;
+package com.ll.P_A.payment.order;
 
-import com.ll.P_A.payment.OrderStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
