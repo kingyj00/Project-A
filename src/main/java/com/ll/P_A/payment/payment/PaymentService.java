@@ -14,10 +14,16 @@ public class PaymentService {
     private final PaymentRepository paymentRepository; // 결제 데이터 다루는 창구
     private final OrderRepository orderRepository;     // 주문 데이터 다루는 창구
 
-    //결제 시작 단계(멱등키 사용)
+    //단건 조회 (읽기 전용)
+    @Transactional(Transactional.TxType.SUPPORTS)
+    public Payment get(Long paymentId) {
+        return getOrThrow(paymentId);
+    }
+
+    // 결제 시작 단계(멱등키 사용)
     @Transactional
     public Payment initiatePayment(Long orderId, String provider, String method, String idempotencyKey) {
-        // 1)키 중복이면 바로 거절 (같은 결제 재요청 방지)
+        // 1) 키 중복이면 바로 거절 (같은 결제 재요청 방지)
         paymentRepository.findByIdempotencyKey(idempotencyKey).ifPresent(p -> {
             throw new IllegalStateException("이미 처리된 결제 요청(Idempotency-Key 중복): " + idempotencyKey);
         });
@@ -45,16 +51,11 @@ public class PaymentService {
         return paymentRepository.save(payment);
     }
 
-    /**
-     * 결제 성공 콜백 가정
-     * - PG로부터 “성공” 응답이 왔다고 가정하고 처리
-     * - 결제 상태를 성공으로 바꾸고, 주문도 “결제완료(PAID)”로 바꿈
-     */
+    // 결제 성공
     @Transactional
     public void succeedPayment(Long paymentId, String transactionIdFromPg) {
         // 1) 결제 레코드 찾기
-        Payment payment = paymentRepository.findById(paymentId)
-                .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
+        Payment payment = getOrThrow(paymentId);
 
         // 2) 결제 성공으로 표시 + PG에서 받은 거래번호 기록
         payment.markSucceeded(transactionIdFromPg);
@@ -63,35 +64,33 @@ public class PaymentService {
         payment.getOrder().markPaid();
     }
 
-    /**
-     * 결제 실패 처리
-     * - 왜 실패했는지 코드/메시지 함께 저장
-     */
+    // 결제 실패
     @Transactional
     public void failPayment(Long paymentId, String failureCode, String failureMessage) {
         // 1) 결제 레코드 찾기
-        Payment payment = paymentRepository.findById(paymentId)
-                .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
+        Payment payment = getOrThrow(paymentId);
 
         // 2) 결제 실패 상태로 변경(사유 기록)
         payment.markFailed(failureCode, failureMessage);
     }
 
-    /**
-     * 전액 환불 처리(단순 버전)
-     * - 부분 환불을 하려면 “누적 환불액” 같은 필드를 Payment에 추가해서 관리해야 함
-     * - 결제를 환불로 표시하고, 주문도 환불 상태로 변경
-     */
+
+     // 전액 환불 처리(단순 버전)
     @Transactional
     public void refundSucceeded(Long paymentId) {
         // 1) 결제 레코드 찾기
-        Payment payment = paymentRepository.findById(paymentId)
-                .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
+        Payment payment = getOrThrow(paymentId);
 
         // 2) 결제 환불 완료로 표시
         payment.markRefunded();
 
         // 3) 주문도 환불 상태로 변경
         payment.getOrder().markRefunded();
+    }
+
+    //findById 반복 제거 및 예외 메시지 통일
+    private Payment getOrThrow(Long paymentId) {
+        return paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
     }
 }
