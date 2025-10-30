@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
  *  - POST /api/pay/orders/{orderId}/pay      : 결제 시도(모의 성공)
  *  - POST /api/pay/payments/{paymentId}/refund : 환불(모의 성공)
  */
+
 @RestController
 @RequestMapping("/api/pay")
 @RequiredArgsConstructor
@@ -24,6 +25,7 @@ public class PaymentController {
     public PaymentResponseDto pay(@PathVariable Long orderId,
                                   @RequestBody PaymentRequestDto req) {
         // 1) 결제 시작(INITIATED 저장, 멱등키 검증)
+        // 추후 토스 결제 테스트용으로 변경
         Payment p = paymentService.initiatePayment(
                 orderId,
                 req.provider(),
