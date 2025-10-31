@@ -55,6 +55,9 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test' // 테스트
     testImplementation 'org.springframework.security:spring-security-test' // 시큐리티 테스트
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher' // JUnit 런처
+
+    // Toss API 호출용
+    implementation 'org.apache.httpcomponents.client5:httpclient5:5.3'
 }
 
 test {
