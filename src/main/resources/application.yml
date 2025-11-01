@@ -1,89 +1,113 @@
+# ==========================================
 # 기본 DB 설정 (로컬: H2 메모리, MySQL 문법 호환)
+# ==========================================
 spring:
   datasource:
     # 기본값: H2 메모리 DB (MySQL 문법 호환을 위해 MODE=MySQL 옵션 추가)
     url: ${DB_URL:jdbc:h2:mem:testdb;MODE=MySQL}
-    # 드라이버를 명시해 클래스패스 인식 실패를 방지
     driver-class-name: ${DB_DRIVER:org.h2.Driver}
     username: ${DB_USERNAME:sa}
     password: ${DB_PASSWORD:}
 
   jpa:
-    # 개발/로컬에선 스키마를 자동으로 맞춤
     hibernate:
       ddl-auto: update
     properties:
       hibernate:
-        # 콘솔에서 SQL을 보기 좋게
         format_sql: true
-        # 트랜잭션 밖에서도 Lazy 로딩 허용
         enable_lazy_load_no_trans: true
 
   h2:
     console:
-      # H2 웹 콘솔 사용 (http://localhost:8080/h2-console)
-      enabled: true
+      enabled: true # http://localhost:8080/h2-console
 
   jackson:
     serialization:
-      # Hibernate 프록시/빈 객체 직렬화 예외 방지(스웨거 500 완화)
       FAIL_ON_EMPTY_BEANS: false
 
-# JWT 토큰 유효시간/시크릿 기본값 (운영은 꼭 환경변수로 교체)
+# ==========================================
+# JWT 설정 (로컬 개발 기본값)
+# ==========================================
 jwt:
   secret: ${JWT_SECRET:ThisIsAVeryLongLocalDevSecretKey_AtLeast32Chars!}
   access-token-validity-ms: 900000          # 15분
   refresh-token-validity-ms: 1209600000     # 14일
 
-# 메일 발송 계정 (환경변수로 주입)
+# ==========================================
+# 메일 / Redis / App 기본 설정
+# ==========================================
 mail:
   username: ${MAIL_USERNAME:}
   password: ${MAIL_PASSWORD:}
 
-# Redis 기본 접속 정보(로컬 기준)
 redis:
   host: ${REDIS_HOST:localhost}
   port: ${REDIS_PORT:6379}
 
-# 앱 내부에서 쓰는 검증 링크 베이스 URL
 app:
   verify:
     base-url: ${APP_VERIFY_BASE_URL:http://localhost:8080}
 
-# Swagger / OpenAPI 설정 (루트 패키지 스캔 + 안정화 옵션)
+# ==========================================
+# Swagger / OpenAPI 설정
+# ==========================================
 springdoc:
   api-docs:
-    enabled: true # /v3/api-docs 활성화
+    enabled: true
   swagger-ui:
-    enabled: true # /swagger-ui/index.html 활성화
-  packages-to-scan: com.ll.P_A # 컨트롤러가 흩어져 있어도 루트 패키지로 모두 스캔
-  paths-to-match: /** # 전 경로 허용(필요 시 /api/** 등으로 조정)
-  remove-broken-reference-definitions: true # 끊긴 참조 스키마 무시하고 진행
-  default-consumes-media-type: application/json # 기본 요청 미디어 타입
-  default-produces-media-type: application/json # 기본 응답 미디어 타입
+    enabled: true
+  packages-to-scan: com.ll.P_A
+  paths-to-match: /**
+  remove-broken-reference-definitions: true
+  default-consumes-media-type: application/json
+  default-produces-media-type: application/json
 
-# ============================
-# 결제 관련
-# ============================
+# ==========================================
+# 결제 관련 (공통 설정)
+# ==========================================
 trade:
-  # 개발 초기는 MOCK로 두고, 실결제 붙일 때 환경변수로 PG로 전환
   mode: ${TRADE_MODE:MOCK}           # MOCK | PG
-
   pg:
-    # 어떤 PG를 쓸지(예: TOSS, KG, PORTONE 등) — 실제 연동 시 바꿔주면 됨
     provider: ${TRADE_PG_PROVIDER:TOSS}
-    # PG 연동 키/시크릿 — 절대 깃에 올리지 말고 환경변수로 주입
     apiKey: ${TRADE_PG_API_KEY:}
     secretKey: ${TRADE_PG_SECRET:}
-    # 웹훅 서명 검증용 비밀값(필수) — PG 콘솔에서 발급
     webhookSecret: ${TRADE_PG_WEBHOOK_SECRET:}
-    # 샘플 샌드박스 엔드포인트(실제 PG 문서 값으로 교체)
     endpointBaseUrl: ${TRADE_PG_ENDPOINT_BASE_URL:https://sandbox-pay.example.com}
-
   webhook:
-    # PG가 결제 결과를 알려줄 콜백 엔드포인트(컨트롤러와 일치시켜야 함)
     endpointPath: /api/trade/payments/webhook
-
   idempotency:
-    # 중복 결제 방지 키(Idempotency-Key) 보관 시간(초)
     ttlSeconds: ${TRADE_IDEMPOTENCY_TTL_SECONDS:86400}
+
+# ==========================================
+#  Toss Payments 테스트 환경 추가
+# ==========================================
+toss:
+  # TossPayments 테스트 모드: 실제 결제 없음
+  # (개발자 센터 → 테스트 프로젝트 → Key 확인)
+  client-key: ${TOSS_CLIENT_KEY:test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm}
+  secret-key: ${TOSS_SECRET_KEY:test_sk_exampleSecretKeyReplaceMe}
+  customer-key: ${TOSS_CUSTOMER_KEY:SBxrz80rBtb6ZRTvVpZC-}
+
+  # 테스트 API 엔드포인트
+  endpoint:
+    confirm: https://api.tosspayments.com/v1/payments/confirm
+    widget: https://js.tosspayments.com/v1/payment-widget
+
+  # Toss 개발자 센터 문서 경로 (참고용)
+  docs:
+    guide-url: https://docs.tosspayments.com/guides/payment-widget/integration
+
+# ==========================================
+# 서버 정보 (로컬 / 개발 환경 구분용)
+# ==========================================
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: always
+    include-binding-errors: always
+
+logging:
+  level:
+    root: INFO
+    org.springframework.web: INFO
+    com.ll.P_A: DEBUG
