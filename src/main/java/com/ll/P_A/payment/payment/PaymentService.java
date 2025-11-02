@@ -5,7 +5,14 @@ import com.ll.P_A.payment.order.OrderRepository;
 import com.ll.P_A.payment.order.OrderStatus;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.apache.hc.client5.http.fluent.Request;
+import org.apache.hc.core5.http.ContentType;
+import org.json.JSONObject;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
 @Service
 @RequiredArgsConstructor
@@ -13,6 +20,13 @@ public class PaymentService {
 
     private final PaymentRepository paymentRepository; // 결제 데이터 다루는 창구
     private final OrderRepository orderRepository;     // 주문 데이터 다루는 창구
+
+    // Toss API Secret Key (application.yml에서 주입)
+    @Value("${toss.secret-key}")
+    private String tossSecretKey;
+
+    // Toss 결제 승인 요청 엔드포인트
+    private static final String TOSS_CONFIRM_URL = "https://api.tosspayments.com/v1/payments/confirm";
 
     //단건 조회 (읽기 전용)
     @Transactional(Transactional.TxType.SUPPORTS)
@@ -37,58 +51,74 @@ public class PaymentService {
             throw new IllegalStateException("결제 가능한 주문 상태가 아님: " + order.getStatus());
         }
 
-        // 4) 결제 엔티티 생성 (누가, 얼마를, 어떤 PG/수단으로 결제 시도 중인지 기록)
+        // 4) 결제 엔티티 생성
         Payment payment = Payment.builder()
-                .order(order)                       // 어떤 주문의 결제인지
-                .amount(order.getAmount())          // 결제 금액
-                .provider(provider)                  // PG사(토스, 카카오 등)
-                .method(method)                      // 결제수단(카드, 계좌, 간편결제 등)
-                .idempotencyKey(idempotencyKey)     // 키 저장
-                .status(PaymentStatus.INITIATED)    // 결제 시작 상태로 표시
+                .order(order)
+                .amount(order.getAmount())
+                .provider(provider)
+                .method(method)
+                .idempotencyKey(idempotencyKey)
+                .status(PaymentStatus.INITIATED)
                 .build();
 
         // 5) DB에 저장 후 반환
         return paymentRepository.save(payment);
     }
 
+    // Toss 결제 승인 API 호출 (테스트용)
+    @Transactional
+    public void confirmTossPayment(String paymentKey, String orderId, int amount) {
+        try {
+            //요청 본문 생성
+            JSONObject body = new JSONObject();
+            body.put("paymentKey", paymentKey);
+            body.put("orderId", orderId);
+            body.put("amount", amount);
+
+            //인증 헤더 (Basic Auth: secretKey:)
+            String encodedAuth = Base64.getEncoder()
+                    .encodeToString((tossSecretKey + ":").getBytes(StandardCharsets.UTF_8));
+
+            //Toss 서버로 결제 승인 요청
+            String response = Request.post(TOSS_CONFIRM_URL)
+                    .addHeader("Authorization", "Basic " + encodedAuth)
+                    .bodyString(body.toString(), ContentType.APPLICATION_JSON)
+                    .execute()
+                    .returnContent()
+                    .asString();
+
+            //로그 출력 (성공 응답 확인용)
+            System.out.println("Toss 결제 승인 응답: " + response);
+
+        } catch (Exception e) {
+            throw new RuntimeException("Toss 결제 승인 요청 실패", e);
+        }
+    }
+
     // 결제 성공
     @Transactional
     public void succeedPayment(Long paymentId, String transactionIdFromPg) {
-        // 1) 결제 레코드 찾기
         Payment payment = getOrThrow(paymentId);
-
-        // 2) 결제 성공으로 표시 + PG에서 받은 거래번호 기록
         payment.markSucceeded(transactionIdFromPg);
-
-        // 3) 연결된 주문도 “결제완료” 상태로 변경
         payment.getOrder().markPaid();
     }
 
     // 결제 실패
     @Transactional
     public void failPayment(Long paymentId, String failureCode, String failureMessage) {
-        // 1) 결제 레코드 찾기
         Payment payment = getOrThrow(paymentId);
-
-        // 2) 결제 실패 상태로 변경(사유 기록)
         payment.markFailed(failureCode, failureMessage);
     }
 
-
-     // 전액 환불 처리(단순 버전)
+    // 전액 환불 처리(단순 버전)
     @Transactional
     public void refundSucceeded(Long paymentId) {
-        // 1) 결제 레코드 찾기
         Payment payment = getOrThrow(paymentId);
-
-        // 2) 결제 환불 완료로 표시
         payment.markRefunded();
-
-        // 3) 주문도 환불 상태로 변경
         payment.getOrder().markRefunded();
     }
 
-    //findById 반복 제거 및 예외 메시지 통일
+    // 공통: 결제 ID로 조회 or 예외
     private Payment getOrThrow(Long paymentId) {
         return paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
