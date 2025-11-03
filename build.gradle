@@ -56,8 +56,9 @@ dependencies {
     testImplementation 'org.springframework.security:spring-security-test' // 시큐리티 테스트
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher' // JUnit 런처
 
-    // Toss API 호출용
-    implementation 'org.apache.httpcomponents.client5:httpclient5:5.3'
+    // === Toss Payments 연동용 (추가) ===
+    implementation 'org.apache.httpcomponents.client5:httpclient5:5.3' // HTTP 요청용
+    implementation 'org.json:json:20231013' // JSON 처리용
 }
 
 test {
