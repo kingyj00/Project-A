@@ -59,6 +59,7 @@ dependencies {
     // === Toss Payments 연동용 (추가) ===
     implementation 'org.apache.httpcomponents.client5:httpclient5:5.3' // HTTP 요청용
     implementation 'org.json:json:20231013' // JSON 처리용
+    implementation 'org.apache.httpcomponents.client5:httpclient5-fluent:5.3' // HTTP Fluent
 }
 
 test {
