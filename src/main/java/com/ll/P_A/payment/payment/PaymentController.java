@@ -72,7 +72,7 @@ public class PaymentController {
             // Toss 결제 승인 요청
             paymentService.confirmTossPayment(paymentKey, orderId, amount);
 
-            // 성공 메시지 반환 (테스트용)
+            // 성공 메시지 반환
             return "Toss 결제 승인 요청 성공!";
         } catch (Exception e) {
             e.printStackTrace();
