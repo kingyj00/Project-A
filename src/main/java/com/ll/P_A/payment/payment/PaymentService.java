@@ -8,10 +8,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import org.apache.hc.client5.http.fluent.Request;
-import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
@@ -19,23 +24,22 @@ import java.util.Base64;
 @RequiredArgsConstructor
 public class PaymentService {
 
-    private final PaymentRepository paymentRepository; // 결제 데이터 다루는 창구
-    private final OrderRepository orderRepository;     // 주문 데이터 다루는 창구
+    private final PaymentRepository paymentRepository;
+    private final OrderRepository orderRepository;
 
-    // Toss SecretKey (application.yml에서 자동 주입)
+    // Toss 시크릿키 (application.yml에서 불러옴)
     @Value("${toss.secret-key}")
     private String tossSecretKey;
 
-    // Toss API 결제 승인 주소
     private static final String TOSS_CONFIRM_URL = "https://api.tosspayments.com/v1/payments/confirm";
 
-    // 단건 조회 (읽기 전용)
+    // ===== 단건 조회 =====
     @Transactional(Transactional.TxType.SUPPORTS)
     public Payment get(Long paymentId) {
         return getOrThrow(paymentId);
     }
 
-    // 결제 시작 단계 (멱등키 사용)
+    // ===== 결제 시작 =====
     @Transactional
     public Payment initiatePayment(Long orderId, String provider, String method, String idempotencyKey) {
         paymentRepository.findByIdempotencyKey(idempotencyKey).ifPresent(p -> {
@@ -61,37 +65,37 @@ public class PaymentService {
         return paymentRepository.save(payment);
     }
 
-    // Toss 결제 승인 요청 (테스트용)
+    // ===== Toss 결제 승인 (테스트용) =====
     @Transactional
-    public void confirmTossPayment(String paymentKey, String orderId, int amount) {
-        try {
-            // Toss API 요청
+    public String confirmTossPayment(String paymentKey, String orderId, int amount) {
+        try (CloseableHttpClient client = HttpClients.createDefault()) {
             JSONObject body = new JSONObject();
             body.put("paymentKey", paymentKey);
             body.put("orderId", orderId);
             body.put("amount", amount);
 
-            // Toss 인증 헤더
+            //인증 생성
             String encodedAuth = Base64.getEncoder()
                     .encodeToString((tossSecretKey + ":").getBytes(StandardCharsets.UTF_8));
 
-            // HTTP POST 요청으로 Toss 서버에 결제 승인 요청
-            String response = Request.post(TOSS_CONFIRM_URL)
-                    .addHeader("Authorization", "Basic " + encodedAuth)
-                    .bodyString(body.toString(), ContentType.APPLICATION_JSON)
-                    .execute()
-                    .returnContent()
-                    .asString();
+            HttpPost post = new HttpPost(TOSS_CONFIRM_URL);
+            post.setHeader("Authorization", "Basic " + encodedAuth);
+            post.setHeader("Content-Type", "application/json");
+            post.setEntity(new StringEntity(body.toString(), StandardCharsets.UTF_8));
 
-            // Toss 응답 로그 출력 (테스트용)
-            System.out.println("Toss 결제 승인 응답: " + response);
+            try (ClassicHttpResponse response = client.executeOpen(null, post, null)) {
+                HttpEntity entity = response.getEntity();
+                String responseBody = new String(entity.getContent().readAllBytes(), StandardCharsets.UTF_8);
+                System.out.println("Toss 결제 승인 응답: " + responseBody);
+                return responseBody;
+            }
 
-        } catch (Exception e) {
+        } catch (IOException e) {
             throw new RuntimeException("Toss 결제 승인 요청 실패", e);
         }
     }
 
-    // 결제 성공 처리
+    // ===== 결제 성공 처리 =====
     @Transactional
     public void succeedPayment(Long paymentId, String transactionIdFromPg) {
         Payment payment = getOrThrow(paymentId);
@@ -99,14 +103,14 @@ public class PaymentService {
         payment.getOrder().markPaid();
     }
 
-    // 결제 실패 처리
+    // ===== 결제 실패 처리 =====
     @Transactional
     public void failPayment(Long paymentId, String failureCode, String failureMessage) {
         Payment payment = getOrThrow(paymentId);
         payment.markFailed(failureCode, failureMessage);
     }
 
-    // 전액 환불 처리
+    // ===== 환불 처리 =====
     @Transactional
     public void refundSucceeded(Long paymentId) {
         Payment payment = getOrThrow(paymentId);
@@ -114,7 +118,7 @@ public class PaymentService {
         payment.getOrder().markRefunded();
     }
 
-    // 공통: 결제 ID로 조회 or 예외
+    // ===== 내부 공통 =====
     private Payment getOrThrow(Long paymentId) {
         return paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
