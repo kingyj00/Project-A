@@ -3,8 +3,6 @@ package com.ll.P_A.payment.payment;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
-
 /**
  * Payment 도메인 컨트롤러
  * - 모의 결제 해피패스: 주문 결제 시도 → 즉시 성공 처리 → 최신 Payment 상태 응답
@@ -53,30 +51,5 @@ public class PaymentController {
         // 2) 최신 상태로 재조회하여 응답(REFUNDED)
         Payment updated = paymentService.get(paymentId);
         return PaymentResponseDto.from(updated);
-    }
-
-    // === [3] Toss 테스트 결제 승인 추가 ===
-    /**
-     * Toss 결제 위젯에서 결제 완료 시 호출되는 엔드포인트
-     * 프론트엔드에서 paymentKey, orderId, amount를 전달받아 Toss 서버로 승인 요청 보냄
-     * (실제 돈은 빠져나가지 않음 — 테스트 환경)
-     */
-    @PostMapping("/toss/confirm")
-    public String confirmTossPayment(@RequestBody Map<String, Object> body) {
-        try {
-            // 프론트에서 받은 데이터 꺼내기
-            String paymentKey = (String) body.get("paymentKey");
-            String orderId = (String) body.get("orderId");
-            int amount = Integer.parseInt(body.get("amount").toString());
-
-            // Toss 결제 승인 요청
-            paymentService.confirmTossPayment(paymentKey, orderId, amount);
-
-            // 성공 메시지 반환
-            return "Toss 결제 승인 요청 성공!";
-        } catch (Exception e) {
-            e.printStackTrace();
-            return "Toss 결제 승인 중 오류 발생: " + e.getMessage();
-        }
     }
 }
