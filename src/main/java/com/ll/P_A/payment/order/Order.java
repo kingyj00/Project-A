@@ -15,14 +15,19 @@ import java.time.Instant;
 @Table(name = "orders")
 public class Order {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 우선 ID만 들고가고 추후 연관관계로 확장
+    // 구매자, 상품 정보
     private Long buyerId;
     private Long listingId;
 
-    private Long amount; // 원 단위
+    // 결제용 상품명 필드 추가 (임시 주문용)
+    private String name;
+
+    // 결제 금액 (원 단위)
+    private Long amount;
 
     @Enumerated(EnumType.STRING)
     private OrderStatus status;
@@ -38,6 +43,8 @@ public class Order {
 
     @UpdateTimestamp
     private Instant updatedAt;
+
+    // ====== 상태 전이 메서드들 ======
 
     public void markPaid() {
         ensureStatus(OrderStatus.PENDING);
