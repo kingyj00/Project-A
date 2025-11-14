@@ -27,21 +27,23 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
 
-    // Toss 시크릿키 (application.yml에서 불러옴)
     @Value("${toss.secret-key}")
     private String tossSecretKey;
 
     private static final String TOSS_CONFIRM_URL = "https://api.tosspayments.com/v1/payments/confirm";
 
-    // ===== 단건 조회 =====
+    private static final String TOSS_REFUND_URL = "https://api.tosspayments.com/v1/payments/";
+
+    // 단건 조회
     @Transactional(Transactional.TxType.SUPPORTS)
     public Payment get(Long paymentId) {
         return getOrThrow(paymentId);
     }
 
-    // ===== 결제 시작 =====
+    // 결제 시작
     @Transactional
     public Payment initiatePayment(Long orderId, String provider, String method, String idempotencyKey) {
+
         paymentRepository.findByIdempotencyKey(idempotencyKey).ifPresent(p -> {
             throw new IllegalStateException("이미 처리된 결제 요청(Idempotency-Key 중복): " + idempotencyKey);
         });
@@ -65,16 +67,17 @@ public class PaymentService {
         return paymentRepository.save(payment);
     }
 
-    // ===== Toss 결제 승인 (테스트용) =====
+    // Toss 결제 승인(confirm)
     @Transactional
-    public String confirmTossPayment(String paymentKey, String orderId, int amount) {
+    public Payment confirmToss(String paymentKey, String orderId, int amount) {
+
         try (CloseableHttpClient client = HttpClients.createDefault()) {
+
             JSONObject body = new JSONObject();
             body.put("paymentKey", paymentKey);
             body.put("orderId", orderId);
             body.put("amount", amount);
 
-            //인증 생성
             String encodedAuth = Base64.getEncoder()
                     .encodeToString((tossSecretKey + ":").getBytes(StandardCharsets.UTF_8));
 
@@ -83,19 +86,44 @@ public class PaymentService {
             post.setHeader("Content-Type", "application/json");
             post.setEntity(new StringEntity(body.toString(), StandardCharsets.UTF_8));
 
-            try (ClassicHttpResponse response = client.executeOpen(null, post, null)) {
-                HttpEntity entity = response.getEntity();
-                String responseBody = new String(entity.getContent().readAllBytes(), StandardCharsets.UTF_8);
-                System.out.println("Toss 결제 승인 응답: " + responseBody);
-                return responseBody;
+            ClassicHttpResponse response = (ClassicHttpResponse) client.executeOpen(null, post, null);
+
+            int code = response.getCode();
+            String responseBody = new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
+
+            if (code < 200 || code >= 300) {
+                throw new IllegalStateException("TOSS_CONFIRM_FAILED: " + responseBody);
             }
 
-        } catch (IOException e) {
-            throw new RuntimeException("Toss 결제 승인 요청 실패", e);
+            long oid = Long.parseLong(orderId);
+
+            Order order = orderRepository.findById(oid)
+                    .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
+
+            if (order.getAmount().intValue() != amount) {
+                throw new IllegalStateException("금액 불일치: order=" + order.getAmount() + " request=" + amount);
+            }
+
+            Payment payment = paymentRepository.findByOrderId(order.getId())
+                    .orElse(Payment.builder()
+                            .order(order)
+                            .amount((long) amount)
+                            .provider("TOSS")
+                            .method("CARD")
+                            .status(PaymentStatus.INITIATED)
+                            .build());
+
+            payment.markSucceeded(paymentKey);
+            order.markPaid();
+
+            return paymentRepository.save(payment);
+
+        } catch (Exception e) {
+            throw new IllegalStateException("TOSS_CONFIRM_FAILED: " + e.getMessage());
         }
     }
 
-    // ===== 결제 성공 처리 =====
+    // 결제 성공 처리
     @Transactional
     public void succeedPayment(Long paymentId, String transactionIdFromPg) {
         Payment payment = getOrThrow(paymentId);
@@ -103,22 +131,55 @@ public class PaymentService {
         payment.getOrder().markPaid();
     }
 
-    // ===== 결제 실패 처리 =====
+    // 결제 실패 처리
     @Transactional
     public void failPayment(Long paymentId, String failureCode, String failureMessage) {
         Payment payment = getOrThrow(paymentId);
         payment.markFailed(failureCode, failureMessage);
     }
 
-    // ===== 환불 처리 =====
+    // Toss 환불 처리
     @Transactional
-    public void refundSucceeded(Long paymentId) {
-        Payment payment = getOrThrow(paymentId);
-        payment.markRefunded();
-        payment.getOrder().markRefunded();
+    public Payment refundToss(String paymentKey, String reason) {
+
+        String refundUrl = TOSS_REFUND_URL + paymentKey + "/cancel";
+
+        JSONObject body = new JSONObject();
+        body.put("cancelReason", reason);
+
+        String encodedAuth = Base64.getEncoder()
+                .encodeToString((tossSecretKey + ":").getBytes(StandardCharsets.UTF_8));
+
+        try (CloseableHttpClient client = HttpClients.createDefault()) {
+
+            HttpPost post = new HttpPost(refundUrl);
+            post.setHeader("Authorization", "Basic " + encodedAuth);
+            post.setHeader("Content-Type", "application/json");
+            post.setEntity(new StringEntity(body.toString(), StandardCharsets.UTF_8));
+
+            ClassicHttpResponse response = (ClassicHttpResponse) client.executeOpen(null, post, null);
+
+            int code = response.getCode();
+            String responseBody = new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
+
+            if (code < 200 || code >= 300) {
+                throw new IllegalStateException("TOSS_REFUND_FAILED: " + responseBody);
+            }
+
+            Payment payment = paymentRepository.findByPaymentKey(paymentKey)
+                    .orElseThrow(() -> new IllegalArgumentException("Payment not found"));
+
+            payment.markRefunded();
+            payment.getOrder().markRefunded();
+
+            return payment;
+
+        } catch (Exception e) {
+            throw new IllegalStateException("TOSS_REFUND_FAILED: " + e.getMessage());
+        }
     }
 
-    // ===== 내부 공통 =====
+    // 내부 공통
     private Payment getOrThrow(Long paymentId) {
         return paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
