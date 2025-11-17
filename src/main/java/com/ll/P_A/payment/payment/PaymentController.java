@@ -1,9 +1,5 @@
 package com.ll.P_A.payment.payment;
 
-import com.ll.P_A.payment.payment.Payment;
-import com.ll.P_A.payment.payment.PaymentRequestDto;
-import com.ll.P_A.payment.payment.PaymentResponseDto;
-import com.ll.P_A.payment.payment.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -36,18 +32,7 @@ public class PaymentController {
         return PaymentResponseDto.from(updated);
     }
 
-    // [2] 기존 모의 환불 처리
-    @PostMapping("/payments/{paymentId}/refund")
-    public PaymentResponseDto refund(@PathVariable Long paymentId) {
-        // 모의 환불 성공 처리
-        paymentService.refundSucceeded(paymentId);
-
-        // 최신 상태 응답
-        Payment updated = paymentService.get(paymentId);
-        return PaymentResponseDto.from(updated);
-    }
-
-    // [3] Toss 결제 승인 처리
+    // [2] Toss 결제 승인 처리
     //     Toss 위젯 성공 → paymentKey 전달
     @PostMapping("/toss/confirm")
     public ResponseEntity<PaymentResponseDto> confirmToss(@RequestBody TossConfirmRequestDto dto) {
@@ -61,7 +46,7 @@ public class PaymentController {
         return ResponseEntity.ok(PaymentResponseDto.from(payment));
     }
 
-    // [4] Toss 환불 처리 (실환불)
+    // [3] Toss 환불 처리 (실환불)
     @PostMapping("/toss/refund")
     public ResponseEntity<PaymentResponseDto> refundToss(@RequestBody RefundRequestDto dto) {
 
