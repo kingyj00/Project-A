@@ -1,4 +1,4 @@
-package com.ll_P_A.payment.payment;
+package com.ll.P_A.payment.payment;
 
 import com.ll.P_A.payment.payment.Payment;
 import com.ll.P_A.payment.payment.PaymentRequestDto;
