@@ -17,6 +17,7 @@ import java.time.Instant;
         name = "payments",
         indexes = {
                 @Index(name = "idx_payment_order", columnList = "order_id"),
+                @Index(name = "idx_payment_paymentKey", columnList = "paymentKey", unique = true),
                 @Index(name = "idx_payment_txid", columnList = "transactionId", unique = true),
                 @Index(name = "idx_payment_idempotency", columnList = "idempotencyKey", unique = true)
         }
@@ -34,10 +35,18 @@ public class Payment {
     @Enumerated(EnumType.STRING)
     private PaymentStatus status;
 
-    private String provider;        // "MOCK", "TOSS", "KG", "PORTONE" 등
-    private String method;          // "CARD", "VBANK" 등
-    private String transactionId;   // PG 거래 ID(고유)
-    private String idempotencyKey;  // 중복 결제 방지 키
+    private String provider;
+    private String method;
+
+    // Toss 결제에서 필수: paymentKey(환불/조회/승인)
+    @Column(unique = true)
+    private String paymentKey;
+
+    // PG 내부 특성상 필요한 고유 트랜잭션(=결제승인ID)
+    private String transactionId;
+
+    @Column(unique = true)
+    private String idempotencyKey;
 
     private String failureCode;
     private String failureMessage;
@@ -52,10 +61,17 @@ public class Payment {
     private Instant updatedAt;
 
     /* ===== 도메인 메서드 ===== */
-    public void markSucceeded(String transactionIdFromPg) {
+    public void markSucceeded(String paymentKeyFromPg) {
         ensureStatus(PaymentStatus.INITIATED);
         this.status = PaymentStatus.SUCCEEDED;
-        if (this.transactionId == null) this.transactionId = transactionIdFromPg;
+
+        // Toss 기준 paymentKey 저장
+        this.paymentKey = paymentKeyFromPg;
+
+        // 트랜잭션 ID: paymentKey를 그대로 쓰거나
+        if (this.transactionId == null) {
+            this.transactionId = paymentKeyFromPg;
+        }
     }
 
     public void markFailed(String code, String message) {
