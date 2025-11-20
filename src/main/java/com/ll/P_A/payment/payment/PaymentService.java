@@ -31,7 +31,6 @@ public class PaymentService {
     private String tossSecretKey;
 
     private static final String TOSS_CONFIRM_URL = "https://api.tosspayments.com/v1/payments/confirm";
-
     private static final String TOSS_REFUND_URL = "https://api.tosspayments.com/v1/payments/";
 
     // 단건 조회
@@ -100,7 +99,7 @@ public class PaymentService {
             Order order = orderRepository.findById(oid)
                     .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
 
-            if (order.getAmount().intValue() != amount) {
+            if (!order.getAmount().equals((long) amount)) {
                 throw new IllegalStateException("금액 불일치: order=" + order.getAmount() + " request=" + amount);
             }
 
@@ -113,7 +112,10 @@ public class PaymentService {
                             .status(PaymentStatus.INITIATED)
                             .build());
 
+            // Toss paymentKey 저장
             payment.markSucceeded(paymentKey);
+            payment.setPaymentKey(paymentKey);    // 새 필드 저장
+
             order.markPaid();
 
             return paymentRepository.save(payment);
@@ -121,14 +123,6 @@ public class PaymentService {
         } catch (Exception e) {
             throw new IllegalStateException("TOSS_CONFIRM_FAILED: " + e.getMessage());
         }
-    }
-
-    // 결제 성공 처리
-    @Transactional
-    public void succeedPayment(Long paymentId, String transactionIdFromPg) {
-        Payment payment = getOrThrow(paymentId);
-        payment.markSucceeded(transactionIdFromPg);
-        payment.getOrder().markPaid();
     }
 
     // 결제 실패 처리
