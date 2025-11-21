@@ -24,10 +24,12 @@ import java.time.Instant;
 )
 public class Payment {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "order_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id")
     private Order order;
 
     private Long amount;
@@ -38,11 +40,11 @@ public class Payment {
     private String provider;
     private String method;
 
-    // Toss 결제에서 필수: paymentKey(환불/조회/승인)
+    // Toss 전용 key (confirm/refund/조회 필수)
     @Column(unique = true)
     private String paymentKey;
 
-    // PG 내부 특성상 필요한 고유 트랜잭션(=결제승인ID)
+    // PG 내부 트랜잭션 ID (= Toss paymentKey 사용 가능)
     private String transactionId;
 
     @Column(unique = true)
@@ -60,15 +62,18 @@ public class Payment {
     @UpdateTimestamp
     private Instant updatedAt;
 
-    /* ===== 도메인 메서드 ===== */
+    /* ============================
+       결제 상태 전이 도메인 메서드
+       ============================ */
     public void markSucceeded(String paymentKeyFromPg) {
         ensureStatus(PaymentStatus.INITIATED);
+
         this.status = PaymentStatus.SUCCEEDED;
 
-        // Toss 기준 paymentKey 저장
+        // ★ Toss paymentKey 저장
         this.paymentKey = paymentKeyFromPg;
 
-        // 트랜잭션 ID: paymentKey를 그대로 쓰거나
+        // transactionId가 비어 있으면 paymentKey로 초기화
         if (this.transactionId == null) {
             this.transactionId = paymentKeyFromPg;
         }
@@ -76,7 +81,7 @@ public class Payment {
 
     public void markFailed(String code, String message) {
         if (this.status == PaymentStatus.SUCCEEDED) {
-            throw new IllegalStateException("이미 성공한 결제를 실패로 바꿀 수 없음");
+            throw new IllegalStateException("이미 성공한 결제는 실패로 변경할 수 없습니다.");
         }
         this.status = PaymentStatus.FAILED;
         this.failureCode = code;
@@ -85,7 +90,7 @@ public class Payment {
 
     public void markRefunded() {
         if (this.status != PaymentStatus.SUCCEEDED) {
-            throw new IllegalStateException("성공한 결제만 환불 가능");
+            throw new IllegalStateException("성공한 결제만 환불할 수 있습니다.");
         }
         this.status = PaymentStatus.REFUNDED;
     }
