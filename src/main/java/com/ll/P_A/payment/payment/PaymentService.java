@@ -12,7 +12,6 @@ import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.ClassicHttpResponse;
-import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.json.JSONObject;
 
@@ -76,6 +75,7 @@ public class PaymentService {
             body.put("orderId", orderId);
             body.put("amount", amount);
 
+            // Authorization 헤더 생성
             String encodedAuth = Base64.getEncoder()
                     .encodeToString((tossSecretKey + ":").getBytes(StandardCharsets.UTF_8));
 
@@ -85,7 +85,6 @@ public class PaymentService {
             post.setEntity(new StringEntity(body.toString(), StandardCharsets.UTF_8));
 
             ClassicHttpResponse response = (ClassicHttpResponse) client.executeOpen(null, post, null);
-
             int code = response.getCode();
             String responseBody = new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
 
@@ -102,6 +101,7 @@ public class PaymentService {
                 throw new IllegalStateException("금액 불일치: order=" + order.getAmount() + " request=" + amount);
             }
 
+            // 기존 결제 조회 or 신규 생성
             Payment payment = paymentRepository.findByOrderId(order.getId())
                     .orElse(Payment.builder()
                             .order(order)
@@ -111,7 +111,7 @@ public class PaymentService {
                             .status(PaymentStatus.INITIATED)
                             .build());
 
-            // Toss paymentKey 저장 (markSucceeded 안에서 처리)
+            // Toss paymentKey 저장 (markSucceeded 내부에서 처리)
             payment.markSucceeded(paymentKey);
             order.markPaid();
 
@@ -139,7 +139,7 @@ public class PaymentService {
         body.put("cancelReason", reason);
 
         String encodedAuth = Base64.getEncoder()
-                .encodeToString((tossSecret-key + ":").getBytes(StandardCharsets.UTF_8));
+                .encodeToString((tossSecretKey + ":").getBytes(StandardCharsets.UTF_8));
 
         try (CloseableHttpClient client = HttpClients.createDefault()) {
 
@@ -149,8 +149,8 @@ public class PaymentService {
             post.setEntity(new StringEntity(body.toString(), StandardCharsets.UTF_8));
 
             ClassicHttpResponse response = (ClassicHttpResponse) client.executeOpen(null, post, null);
-
             int code = response.getCode();
+
             String responseBody = new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
 
             if (code < 200 || code >= 300) {
@@ -170,7 +170,9 @@ public class PaymentService {
         }
     }
 
+    // ==============================
     // 내부 공통
+    // ==============================
     private Payment getOrThrow(Long paymentId) {
         return paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
