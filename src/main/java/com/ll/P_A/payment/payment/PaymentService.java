@@ -16,7 +16,6 @@ import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.json.JSONObject;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
@@ -112,10 +111,8 @@ public class PaymentService {
                             .status(PaymentStatus.INITIATED)
                             .build());
 
-            // Toss paymentKey 저장
+            // Toss paymentKey 저장 (markSucceeded 안에서 처리)
             payment.markSucceeded(paymentKey);
-            payment.setPaymentKey(paymentKey);    // 새 필드 저장
-
             order.markPaid();
 
             return paymentRepository.save(payment);
@@ -142,7 +139,7 @@ public class PaymentService {
         body.put("cancelReason", reason);
 
         String encodedAuth = Base64.getEncoder()
-                .encodeToString((tossSecretKey + ":").getBytes(StandardCharsets.UTF_8));
+                .encodeToString((tossSecret-key + ":").getBytes(StandardCharsets.UTF_8));
 
         try (CloseableHttpClient client = HttpClients.createDefault()) {
 
