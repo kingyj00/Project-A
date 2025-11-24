@@ -64,16 +64,15 @@ public class PaymentService {
         return paymentRepository.save(payment);
     }
 
-    // ⭐ [추가됨] 모의 결제 성공 처리
+    //  모의 결제 성공 처리
     @Transactional
     public Payment succeedPayment(Long paymentId, String transactionId) {
 
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
 
-        // 상태 변경
-        payment.setStatus(PaymentStatus.SUCCEEDED);
-        payment.setTransactionId(transactionId);
+        // Payment 엔티티 도메인 규칙에 맞게 성공 처리
+        payment.markSucceeded(transactionId);
 
         // 주문 상태도 결제 완료로 변경
         payment.getOrder().markPaid();
