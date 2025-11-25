@@ -186,9 +186,7 @@ public class PaymentService {
         }
     }
 
-    // ==============================
     // 내부 공통
-    // ==============================
     private Payment getOrThrow(Long paymentId) {
         return paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
